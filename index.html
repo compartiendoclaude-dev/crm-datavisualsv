@@ -398,6 +398,70 @@ const SUPABASE_URL = 'https://ekalupbolumvwwscojjn.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrYWx1cGJvbHVtdnd3c2NvampuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTc0MDEsImV4cCI6MjA5NTg5MzQwMX0.f-hlJAgKIla9kesuhaL9p5pnmWIoYTPrVu_4guXvK50';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+// ══════════════════════════════════════════════════════════════
+//  AUTH — Login / Logout / Session
+// ══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  if (!email || !password) { showLoginError('Por favor ingresa tu correo y contraseña.'); return; }
+  btn.disabled = true; btn.textContent = 'Iniciando sesión...';
+  errEl.classList.remove('show');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    showLoginError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+    btn.disabled = false; btn.textContent = 'Iniciar sesión';
+  } else {
+    await onSessionReady(data.session);
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.classList.add('show');
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], meta_anual:29287, presupuesto_mensual:1000 };
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('userPill').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = 'Iniciar sesión';
+}
+
+async function onSessionReady(session) {
+  document.getElementById('loginScreen').classList.add('hidden');
+  // Show user info in sidebar
+  const email = session.user.email;
+  const initials = email.slice(0, 2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userEmail').textContent = email;
+  document.getElementById('userPill').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'flex';
+  // Enter key on login
+  document.getElementById('loginPassword').removeEventListener('keydown', loginEnterKey);
+}
+
+function loginEnterKey(e) { if (e.key === 'Enter') doLogin(); }
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loginPassword')?.addEventListener('keydown', loginEnterKey);
+  document.getElementById('loginEmail')?.addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPassword').focus(); });
+});
+
+// Check existing session on load
+async function checkSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  return session;
+}
+
+
 // ══════════════════════════════════════════════════════════════
 //  DB LAYER — Supabase persistent storage
 // ══════════════════════════════════════════════════════════════
@@ -737,8 +801,98 @@ async function clearAllData() {
 }
 
 </script>
+
+<style>
+/* ══ LOGIN SCREEN ══ */
+#loginScreen{
+  position:fixed;inset:0;z-index:9000;
+  background:linear-gradient(135deg,#0C1929 0%,#111827 60%,#0E2038 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Geist',sans-serif;
+}
+#loginScreen.hidden{display:none}
+.login-box{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:40px 44px;
+  width:100%;max-width:400px;
+  box-shadow:0 24px 80px rgba(0,0,0,.5);
+  backdrop-filter:blur(20px);
+}
+.login-logo{font-size:18px;font-weight:800;color:#F0F6FF;letter-spacing:-.3px;margin-bottom:4px}
+.login-logo em{color:#38C6E8;font-style:normal}
+.login-sub{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:32px}
+.login-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.login-field label{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px}
+.login-field input{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;padding:11px 14px;font-size:14px;color:#fff;
+  font-family:'Geist',sans-serif;outline:none;transition:.2s;
+}
+.login-field input:focus{border-color:#38C6E8;background:rgba(56,198,232,.08)}
+.login-field input::placeholder{color:rgba(255,255,255,.25)}
+.login-btn{
+  width:100%;padding:12px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#0891B2,#0E7490);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+  font-family:'Geist',sans-serif;margin-top:8px;transition:.2s;
+  letter-spacing:.1px;
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(8,145,178,.4)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.login-error{
+  background:rgba(225,29,72,.12);border:1px solid rgba(225,29,72,.3);
+  color:#FDA4AF;border-radius:8px;padding:10px 14px;
+  font-size:12px;margin-top:12px;display:none;
+}
+.login-error.show{display:block}
+/* User pill in sidebar */
+.user-pill{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:var(--r);
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  margin-bottom:4px;
+}
+.user-pill .up-avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,#0891B2,#7C3AED);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.user-pill .up-info{flex:1;min-width:0}
+.user-pill .up-email{font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-pill .up-role{font-size:9px;color:#38C6E8;font-weight:600}
+.logout-btn{
+  width:100%;padding:7px 10px;border-radius:var(--r);
+  background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.2);
+  color:rgba(255,100,100,.8);font-size:11px;font-weight:600;
+  cursor:pointer;font-family:'Geist',sans-serif;transition:.2s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.logout-btn:hover{background:rgba(225,29,72,.2);color:#FDA4AF}
+</style>
 </head>
 <body>
+
+
+<!-- ════════ LOGIN SCREEN ════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">DataVisual <em>SV</em></div>
+    <div class="login-sub">Dashboard Operativo · Acceso restringido</div>
+    <div class="login-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Iniciar sesión</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
 
 <!-- ════════════ SIDEBAR ════════════ -->
 <div class="app-shell">
@@ -756,6 +910,16 @@ async function clearAllData() {
     <button class="nav-btn" onclick="showPage('levantamiento',this)"><span class="nb-icon">📋</span>Levantamiento</button>
   </nav>
   <div class="sidebar-bottom">
+    <div class="user-pill" id="userPill" style="display:none">
+      <div class="up-avatar" id="userAvatar">?</div>
+      <div class="up-info">
+        <div class="up-email" id="userEmail">–</div>
+        <div class="up-role">Equipo DataVisual SV</div>
+      </div>
+    </div>
+    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="doLogout()">
+      ↩ Cerrar sesión
+    </button>
     <div class="save-indicator" id="saveInd">☁ Supabase</div>
 
     <div class="date-badge" id="dateBadge"></div>
@@ -2799,26 +2963,36 @@ function importData(event){
 // clearAllData → ver bloque Supabase en <head>
 
 // ══════════════════════════════════════════════════════════════
-//  INIT — Supabase version
+//  INIT — Supabase Auth version
 // ══════════════════════════════════════════════════════════════
-async function init(){
-  // Date badge
+async function initDashboard(){
   const now=new Date();
   document.getElementById('dateBadge').textContent=now.toLocaleDateString('es-SV',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  // Today's date as default for forms
   const today=now.toISOString().slice(0,10);
   document.getElementById('vFecha').value=today;
   document.getElementById('sInicio').value=today;
   document.getElementById('gFecha').value=today;
-  // Load from Supabase
   await loadDB();
-  // Build month selector
   buildMonthSelector();
-  // First render
   renderDashboard();
-  // Show welcome banner if no data
   const hasData = DB.oportunidades.length > 0 || DB.ventas.length > 0;
   document.getElementById('welcomeBanner').style.display = hasData ? 'none' : 'block';
+}
+
+async function init(){
+  // Check if there's an active session already (e.g. user refreshed the page)
+  const session = await checkSession();
+  if (session) {
+    await onSessionReady(session);
+    await initDashboard();
+  }
+  // If no session, login screen stays visible — user must log in
+  // Auth state listener handles post-login init
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      await initDashboard();
+    }
+  });
 }
 init();
 
