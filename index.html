@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataVisual SV — Dashboard Operativo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Soft slate with indigo precision lines
+════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#EEF1F7;--surf0:#E4E9F2;--surf1:#FFFFFF;--surf2:#F4F6FB;--surf3:#E8EDF6;
+  --bdr:#D0D9EC;--bdr2:#B8C5DE;
+  --teal:#0891B2;--teal-dk:#0E7490;--teal-lt:#E0F7FA;--teal-glow:rgba(8,145,178,.1);
+  --green:#059669;--green-dk:#047857;--green-lt:#D1FAE5;
+  --amber:#D97706;--amber-dk:#B45309;--amber-lt:#FEF3C7;
+  --red:#E11D48;--red-dk:#BE123C;--red-lt:#FFE4EA;
+  --blue:#4F6FBF;--purple:#7C3AED;
+  --txt:#1E2C45;--txt2:#4A5E7A;--txt3:#8298B5;
+  --font-head:'Geist',sans-serif;
+  --font-body:'Geist',sans-serif;
+  --font-mono:'Geist Mono',monospace;
+  --r:10px;--r-lg:16px;
+  --shadow:0 4px 24px rgba(30,44,69,.1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+
+/* ── NOISE TEXTURE ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.15}
+
+/* ── SIDEBAR LAYOUT ── */
+.app-shell{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;min-width:220px;
+  background:rgba(30,44,69,.97);
+  backdrop-filter:blur(20px);
+  border-right:1px solid rgba(255,255,255,.08);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;
+  z-index:200;overflow-y:auto;scrollbar-width:none;
+}
+.sidebar::-webkit-scrollbar{display:none}
+
+.sidebar-logo{
+  padding:20px 18px 16px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  flex-shrink:0;
+}
+.logo{font-family:var(--font-head);font-size:15px;font-weight:800;color:#F0F6FF;letter-spacing:-.3px;white-space:nowrap;display:block}
+.logo em{color:#38C6E8;font-style:normal}
+.logo sub{font-size:9px;font-weight:600;color:rgba(255,255,255,.4);vertical-align:baseline;margin-left:3px;font-family:var(--font-mono)}
+
+.nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1}
+.nav-btn{
+  padding:10px 12px;height:auto;
+  font-size:12px;font-weight:600;
+  color:rgba(255,255,255,.5);cursor:pointer;
+  border-left:2px solid transparent;
+  border-right:none;border-top:none;border-bottom:none;
+  white-space:nowrap;transition:.2s;
+  display:flex;align-items:center;gap:9px;
+  font-family:var(--font-body);background:none;
+  border-radius:var(--r);width:100%;text-align:left;
+}
+.nav-btn:hover{color:rgba(255,255,255,.9);background:rgba(255,255,255,.07);border-left-color:rgba(255,255,255,.2)}
+.nav-btn.active{color:#38C6E8;background:rgba(56,198,232,.12);border-left-color:#38C6E8}
+.nav-btn .nb-icon{font-size:15px;flex-shrink:0}
+
+.sidebar-bottom{
+  padding:12px 10px;
+  border-top:1px solid rgba(255,255,255,.1);
+  display:flex;flex-direction:column;gap:8px;
+  flex-shrink:0;
+}
+.date-badge{font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);background:rgba(255,255,255,.07);padding:5px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.1);text-align:center}
+.save-indicator{font-size:10px;color:var(--green);display:flex;align-items:center;justify-content:center;gap:4px;opacity:0;transition:.4s}
+.save-indicator.show{opacity:1}
+
+/* ── MAIN CONTENT ── */
+.main-content{margin-left:220px;flex:1;min-width:0}
+
+/* ── LAYOUT ── */
+.page{display:none;padding:20px 24px;max-width:1400px;margin:0 auto;position:relative;z-index:1}
+.page.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.sec-hdr h2{font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--txt);letter-spacing:-.3px}
+.sec-hdr p{font-size:12px;color:var(--txt3);margin-top:3px}
+
+/* ── KPI STRIP ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--surf1);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:16px;position:relative;overflow:hidden;transition:.2s}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card.c-teal::before{background:var(--teal)}
+.kpi-card.c-green::before{background:var(--green)}
+.kpi-card.c-amber::before{background:var(--amber)}
+.kpi-card.c-red::before{background:var(--red)}
+.kpi-card.c-blue::before{background:var(--blue)}
+.kpi-card.c-purple::before{background:var(--purple)}
+.kpi-card:hover{border-color:var(--bdr2);transform:translateY(-1px)}
+.kpi-lbl{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.kpi-val{font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--txt);line-height:1}
+.kpi-sub{font-size:11px;color:var(--txt3);margin-top:5px}
+.kpi-trend{font-size:11px;font-weight:700;margin-top:4px}
+.kpi-trend.up{color:var(--green)}.kpi-trend.dn{color:var(--red)}.kpi-trend.flat{color:var(--txt3)}
+
+/* ── CARDS & GRIDS ── */
+.card{background:var(--surf1);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:18px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-hdr h3{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--txt);letter-spacing:-.1px}
+.card-hdr .cht{font-size:10px;color:var(--txt3);background:var(--surf2);padding:2px 8px;border-radius:10px;border:1px solid var(--bdr)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:2fr 1.2fr;gap:14px}
+
+/* ── FORMS ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.form-grid.four{grid-template-columns:1fr 1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
+.field label .req{color:var(--red)}
+.field input,.field select,.field textarea{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 12px;font-size:13px;color:var(--txt);font-family:var(--font-body);transition:.2s;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-glow)}
+.field select option{background:var(--surf2)}
+.field textarea{resize:vertical;min-height:70px}
+.form-section{background:var(--surf1);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
+.form-section h3{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--teal);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.form-actions{display:flex;gap:10px;margin-top:16px}
+.btn{padding:9px 20px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--font-body);transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--teal);color:#fff}.btn-primary:hover{background:#0E7490;transform:translateY(-1px)}
+.btn-secondary{background:var(--surf2);color:var(--txt2);border:1px solid var(--bdr)}.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+.btn-danger{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.25)}.btn-danger:hover{background:rgba(255,77,109,.2)}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:6px}
+
+/* ── STATUS BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.b-prospecto{background:rgba(77,158,255,.15);color:var(--blue);border:1px solid rgba(77,158,255,.3)}
+.b-demo{background:rgba(255,181,71,.15);color:var(--amber);border:1px solid rgba(255,181,71,.3)}
+.b-propuesta{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+.b-negociacion{background:rgba(0,180,204,.15);color:var(--teal);border:1px solid rgba(0,180,204,.3)}
+.b-ganado{background:rgba(0,208,132,.15);color:var(--green);border:1px solid rgba(0,208,132,.3)}
+.b-perdido{background:rgba(255,77,109,.15);color:var(--red);border:1px solid rgba(255,77,109,.3)}
+
+/* ── PIPELINE KANBAN ── */
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.pipe-col{background:var(--surf1);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:12px;min-height:200px}
+.pipe-col-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pipe-col-hdr .ptitle{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+.pipe-col-hdr .pcount{background:var(--surf2);color:var(--txt3);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--font-mono)}
+.pipe-card{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:10px;margin-bottom:8px;cursor:pointer;transition:.2s}
+.pipe-card:hover{border-color:var(--teal);transform:translateY(-1px)}
+.pipe-card .pname{font-size:12px;font-weight:600;color:var(--txt)}
+.pipe-card .psector{font-size:10px;color:var(--txt3);margin-top:2px}
+.pipe-card .pvalue{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--teal);margin-top:5px}
+.pipe-card .pdays{font-size:10px;color:var(--txt3)}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--surf2);color:var(--txt3);font-weight:700;padding:9px 12px;text-align:left;border-bottom:1px solid var(--bdr);font-size:10px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(208,217,236,.6);color:var(--txt2);vertical-align:middle}
+.tbl tr:hover td{background:rgba(8,145,178,.04)}
+.tbl tr.highlight td{background:rgba(0,180,204,.05)}
+.tbl .mono{font-family:var(--font-mono)}
+.tbl-actions{display:flex;gap:6px}
+
+/* ── PROGRESS BARS ── */
+.prog-bar{background:var(--surf2);border-radius:100px;height:6px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:100px;transition:.5s}
+
+/* ── ALERTS / NOTIFICATIONS ── */
+.alert-bar{border-radius:var(--r);padding:10px 14px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.alert-teal{background:rgba(0,180,204,.08);border:1px solid rgba(0,180,204,.25);color:var(--teal-lt)}
+.alert-green{background:rgba(0,208,132,.08);border:1px solid rgba(0,208,132,.25);color:#A7F3D0}
+.alert-amber{background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.25);color:var(--amber-lt)}
+.alert-red{background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.25);color:var(--red-lt)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(30,44,69,.5);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex;animation:fadeIn .2s ease}
+.modal{background:var(--surf1);border:1px solid var(--bdr2);border-radius:var(--r-lg);padding:24px;width:90%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(30,44,69,.2)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-hdr h3{font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--txt)}
+.modal-close{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt3);width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:.2s}
+.modal-close:hover{color:var(--red);border-color:var(--red)}
+
+/* ── CHART CONTAINERS ── */
+.chart-wrap{position:relative}
+canvas{max-height:220px}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px 20px;color:var(--txt3)}
+.empty .ei{font-size:32px;margin-bottom:8px}
+.empty p{font-size:12px}
+
+/* ── MINI SPARKLINE ── */
+.sparkline-wrap{display:flex;align-items:flex-end;gap:2px;height:28px;margin-top:6px}
+.sparkline-bar{background:var(--teal);border-radius:2px 2px 0 0;opacity:.7;flex:1;transition:.3s;min-height:2px}
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surf0)}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:10px}
+
+/* ══ TOOLTIPS ══ */
+[data-tip]{position:relative}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surf3);color:var(--txt);font-size:10px;padding:4px 8px;border-radius:5px;white-space:nowrap;border:1px solid var(--bdr2);z-index:100}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:900px){
+  .sidebar{width:60px;min-width:60px}
+  .sidebar .logo,.sidebar-bottom .date-badge,.nav-btn span:last-child{display:none}
+  .nav-btn{justify-content:center;padding:10px}
+  .main-content{margin-left:60px}
+  .kpi-strip{grid-template-columns:repeat(3,1fr)}
+  .pipeline{grid-template-columns:repeat(2,1fr)}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid.three,.form-grid.four{grid-template-columns:1fr 1fr}
+}
+
+/* ══ LEVANTAMIENTO SCOPED STYLES ══ */
+.lev-nav{background:rgba(13,27,42,.95);padding:0 24px;display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(255,255,255,.1);height:44px;margin-bottom:20px;border-radius:var(--r-lg) var(--r-lg) 0 0;}
+.lev-subnav-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;flex:1}
+.lev-stab{padding:0 14px;height:44px;font-size:11px;font-weight:600;color:#94A3B8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;transition:.2s;display:flex;align-items:center;gap:5px;font-family:var(--font-body)}
+.lev-stab:hover{color:#fff}
+.lev-stab.lev-active,.lev-stab.active{color:#38BDF8;border-bottom-color:#38BDF8}
+.lev-container{background:#F1F5F9;border-radius:0 0 var(--r-lg) var(--r-lg);padding:20px}
+.lev-page{display:none;max-width:920px;margin:0 auto}
+.lev-page.active{display:block;animation:fadeIn .2s ease}
+
+#page-levantamiento .lev-container {
+  --lev-navy:#0D1B2A; --lev-teal:#0077B6; --lev-teal-lt:#E0F4FF; --lev-teal-dk:#005A8E;
+  --lev-green:#064E3B; --lev-green-lt:#D1FAE5; --lev-green-md:#059669;
+  --lev-amber:#78350F; --lev-amber-lt:#FEF3C7; --lev-amber-md:#D97706;
+  --lev-red:#7F1D1D; --lev-red-lt:#FEE2E2; --lev-red-md:#DC2626;
+  --lev-gray:#F8FAFC; --lev-border:#E2E8F0; --lev-text:#1E293B; --lev-muted:#64748B;
+  --lev-white:#FFFFFF;
+}
+
+
+
+/* ── NAV ── */
+#page-levantamiento .lev-nav {background:var(--lev-navy);padding:0 24px;display:flex;align-items:center;gap:0;position:sticky;top:0;z-index:100;height:48px}
+#page-levantamiento .lev-nav .logo {font-weight:800;font-size:14px;color:#fff;margin-right:28px;letter-spacing:-.3px}
+#page-levantamiento .lev-nav .logo span {color:#38BDF8}
+#page-levantamiento .sector-tabs {display:flex;gap:0;overflow-x:auto;scrollbar-width:none;flex:1}
+#page-levantamiento .sector-tabs::-webkit-scrollbar {display:none}
+#page-levantamiento .stab {padding:0 14px;height:48px;font-size:11px;font-weight:600;color:#94A3B8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;transition:.2s;display:flex;align-items:center;gap:5px}
+#page-levantamiento .stab:hover {color:#fff}
+#page-levantamiento .stab.active {color:#38BDF8;border-bottom-color:#38BDF8}
+#page-levantamiento .stab .dot {width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+#page-levantamiento .nav-right {display:flex;gap:8px;margin-left:auto;padding-left:16px}
+#page-levantamiento .btn-print {background:var(--lev-teal);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+#page-levantamiento .btn-print:hover {background:var(--lev-teal-dk)}
+
+/* ── PAGES ── */
+#page-levantamiento .lev-page {display:none;max-width:960px;margin:0 auto;padding:20px 24px}
+#page-levantamiento .lev-page.active {display:block;animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── FORM HEADER ── */
+#page-levantamiento .form-header {border-radius:12px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+#page-levantamiento .fh-top {padding:22px 28px 16px;color:#fff}
+#page-levantamiento .fh-top .sector-badge {display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+#page-levantamiento .fh-top h1 {font-size:22px;font-weight:800;margin-bottom:4px;letter-spacing:-.3px}
+#page-levantamiento .fh-top p {font-size:12px;opacity:.8}
+#page-levantamiento .fh-meta {background:rgba(255,255,255,.08);padding:14px 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+#page-levantamiento .fh-meta .mi {display:flex;flex-direction:column;gap:2px}
+#page-levantamiento .fh-meta .ml {font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.6;color:#fff}
+#page-levantamiento .fh-meta .mv {font-size:13px;font-weight:700;color:#fff}
+#page-levantamiento .fh-meta input {background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:4px 8px;font-size:12px;color:#fff;font-family:'Inter',sans-serif;width:100%}
+#page-levantamiento .fh-meta input::placeholder {color:rgba(255,255,255,.4)}
+#page-levantamiento .fh-meta input:focus {outline:none;background:rgba(255,255,255,.2)}
+#page-levantamiento .fh-bot {background:var(--lev-white);padding:12px 28px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--lev-border)}
+#page-levantamiento .fh-bot .tag {display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid}
+#page-levantamiento .tag-green {background:var(--lev-green-lt);color:var(--lev-green);border-color:#6EE7B7}
+#page-levantamiento .tag-amber {background:var(--lev-amber-lt);color:var(--lev-amber);border-color:#FDE68A}
+#page-levantamiento .tag-red {background:var(--lev-red-lt);color:var(--lev-red);border-color:#FCA5A5}
+#page-levantamiento .tag-teal {background:var(--lev-teal-lt);color:var(--lev-teal-dk);border-color:#BAE6FD}
+#page-levantamiento .tag-navy {background:#EFF6FF;color:var(--lev-navy);border-color:#BFDBFE}
+
+/* ── SECTIONS ── */
+#page-levantamiento .section {background:#fff;border:1px solid var(--lev-border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+#page-levantamiento .section-hdr {padding:13px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--lev-border);background:var(--lev-gray)}
+#page-levantamiento .section-hdr .sn {width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;color:#fff}
+#page-levantamiento .section-hdr h2 {font-size:13px;font-weight:700;color:var(--lev-text);flex:1}
+#page-levantamiento .section-hdr .badge {font-size:10px;color:var(--lev-muted);background:#EFF6FF;border:1px solid var(--lev-border);padding:2px 8px;border-radius:10px}
+.section-
+
+/* ── FIELD GROUPS ── */
+#page-levantamiento .field-grid {display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#page-levantamiento .field-grid.one {grid-template-columns:1fr}
+#page-levantamiento .field-grid.three {grid-template-columns:1fr 1fr 1fr}
+#page-levantamiento .field {display:flex;flex-direction:column;gap:4px}
+#page-levantamiento .field label {font-size:10px;font-weight:700;color:var(--lev-muted);text-transform:uppercase;letter-spacing:.4px}
+#page-levantamiento .field label .req {color:var(--lev-red-md)}
+#page-levantamiento .field input, #page-levantamiento .field select, #page-levantamiento .field textarea {border:1px solid var(--lev-border);border-radius:7px;padding:8px 11px;font-size:12px;color:var(--lev-text);font-family:'Inter',sans-serif;background:#fff;transition:.15s;outline:none}
+#page-levantamiento .field input:focus, #page-levantamiento .field select:focus, #page-levantamiento .field textarea:focus {border-color:var(--lev-teal);box-shadow:0 0 0 3px rgba(0,119,182,.1)}
+#page-levantamiento .field textarea {resize:vertical;min-height:60px}
+#page-levantamiento .field select {cursor:pointer}
+#page-levantamiento .field input[type=checkbox] {width:16px;height:16px;cursor:pointer;accent-color:var(--lev-teal)}
+#page-levantamiento .check-row {display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--lev-gray);border-radius:7px;cursor:pointer}
+#page-levantamiento .check-row label {font-size:12px;color:var(--lev-text);cursor:pointer;font-weight:500;flex:1}
+#page-levantamiento .check-row input {flex-shrink:0}
+#page-levantamiento .field-note {font-size:10px;color:var(--lev-muted);margin-top:2px;font-style:italic}
+
+/* ── TABLES ── */
+#page-levantamiento .ftable {width:100%;border-collapse:collapse;font-size:12px}
+#page-levantamiento .ftable th {background:var(--lev-navy);color:#fff;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+#page-levantamiento .ftable td {padding:9px 12px;border-bottom:1px solid var(--lev-border);vertical-align:top}
+#page-levantamiento .ftable tr:last-child td {border-bottom:none}
+#page-levantamiento .ftable tr:nth-child(even) td {background:var(--lev-gray)}
+#page-levantamiento .ftable .req-yes {color:var(--lev-green-md);font-weight:700}
+#page-levantamiento .ftable .req-rec {color:var(--lev-amber-md);font-weight:600}
+#page-levantamiento .ftable .req-opt {color:var(--lev-muted)}
+#page-levantamiento .ftable input[type=text] {border:1px solid var(--lev-border);border-radius:5px;padding:4px 8px;font-size:11px;width:100%;font-family:'Inter',sans-serif}
+#page-levantamiento .ftable input[type=checkbox] {accent-color:var(--lev-teal);width:15px;height:15px}
+
+/* ── KPI CARDS ── */
+#page-levantamiento .kpi-grid {display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#page-levantamiento .lev-kpi-card {border:1px solid var(--lev-border);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:8px}
+#page-levantamiento .lev-kpi-card input[type=checkbox] {flex-shrink:0;margin-top:2px;accent-color:var(--lev-teal);width:14px;height:14px}
+#page-levantamiento .lev-kpi-card .kc-info {flex:1}
+#page-levantamiento .lev-kpi-card .kc-name {font-size:12px;font-weight:600;color:var(--lev-text)}
+#page-levantamiento .lev-kpi-card .kc-desc {font-size:10px;color:var(--lev-muted);margin-top:2px;line-height:1.4}
+#page-levantamiento .lev-kpi-card.selected {border-color:var(--lev-teal);background:var(--lev-teal-lt)}
+
+/* ── EFFORT BLOCK ── */
+#page-levantamiento .effort-block {background:linear-gradient(135deg,var(--lev-navy),#1E3A5C);border-radius:10px;padding:18px 20px;color:#fff}
+#page-levantamiento .effort-block h3 {font-size:12px;font-weight:700;color:#38BDF8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+#page-levantamiento .effort-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+#page-levantamiento .eff-item {background:rgba(255,255,255,.08);border-radius:8px;padding:10px;text-align:center}
+#page-levantamiento .eff-item .ev {font-size:22px;font-weight:800;color:#38BDF8;font-family:'JetBrains Mono',monospace}
+#page-levantamiento .eff-item .el {font-size:10px;color:rgba(255,255,255,.6);margin-top:2px}
+#page-levantamiento .effort-tasks {margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#page-levantamiento .eff-task {display:flex;align-items:center;gap:7px;padding:6px 10px;background:rgba(255,255,255,.06);border-radius:6px;font-size:11px;color:rgba(255,255,255,.8)}
+#page-levantamiento .eff-task .et-n {font-family:'JetBrains Mono',monospace;font-size:10px;color:#38BDF8;font-weight:700;flex-shrink:0}
+
+/* ── SCOPE BOX ── */
+#page-levantamiento .scope-grid {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#page-levantamiento .scope-col h4 {font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+#page-levantamiento .scope-yes h4 {color:var(--lev-green)}
+#page-levantamiento .scope-no h4 {color:var(--lev-red)}
+#page-levantamiento .scope-item {display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--lev-border);font-size:11px;color:var(--lev-text);line-height:1.4}
+#page-levantamiento .scope-item:last-child {border:none}
+#page-levantamiento .scope-item .si {flex-shrink:0;font-size:12px}
+
+/* ── PRERREQUISITOS ── */
+#page-levantamiento .prereq-list {display:flex;flex-direction:column;gap:6px}
+#page-levantamiento .prereq-item {display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:8px;background:var(--lev-gray);border:1px solid var(--lev-border)}
+#page-levantamiento .prereq-item .pi-num {width:20px;height:20px;border-radius:5px;background:var(--lev-navy);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+#page-levantamiento .prereq-item .pi-info {flex:1}
+#page-levantamiento .prereq-item .pi-title {font-size:12px;font-weight:600;color:var(--lev-text)}
+#page-levantamiento .prereq-item .pi-desc {font-size:11px;color:var(--lev-muted);margin-top:2px;line-height:1.4}
+#page-levantamiento .prereq-item .pi-req {display:flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;font-weight:700}
+#page-levantamiento .pi-req.must {color:var(--lev-red-md)}.pi-req.should{color:var(--lev-amber-md)}.pi-req.nice{color:var(--lev-green-md)}
+#page-levantamiento .prereq-item input[type=checkbox] {flex-shrink:0;accent-color:var(--lev-teal);width:16px;height:16px;margin-top:3px}
+
+/* ── SIGNATURE ── */
+#page-levantamiento .sig-grid {display:grid;grid-template-columns:1fr 1fr;gap:40px}
+#page-levantamiento .sig-block .sig-line {border-bottom:2px solid var(--lev-navy);height:40px;margin-bottom:6px}
+#page-levantamiento .sig-block .sig-label {font-size:10px;color:var(--lev-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+#page-levantamiento .sig-block .sig-name {font-size:12px;font-weight:600;color:var(--lev-text);margin-top:4px}
+#page-levantamiento .sig-block .sig-title {font-size:11px;color:var(--lev-teal)}
+
+/* ── FOOTER ── */
+#page-levantamiento .form-footer {background:var(--lev-navy);border-radius:10px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+#page-levantamiento .form-footer .ff-brand {font-size:13px;font-weight:800;color:#fff}
+#page-levantamiento .form-footer .ff-brand span {color:#38BDF8}
+#page-levantamiento .form-footer .ff-info {font-size:10px;color:#64748B;text-align:right}
+
+/* ── DISCLAIMER ── */
+#page-levantamiento .disclaimer {background:var(--lev-red-lt);border:1px solid #FCA5A5;border-radius:8px;padding:10px 14px;font-size:11px;color:var(--lev-red);margin-top:10px}
+#page-levantamiento .disclaimer strong {display:block;margin-bottom:3px}
+
+@media print { .lev-page { display:block!important; padding:10px; } .lev-nav { display:none; } body { background:#fff; } }
+
+</style>
+
+<!-- ════════ SUPABASE CDN ════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+//  SUPABASE CONFIG
+// ══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://ekalupbolumvwwscojjn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrYWx1cGJvbHVtdnd3c2NvampuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTc0MDEsImV4cCI6MjA5NTg5MzQwMX0.f-hlJAgKIla9kesuhaL9p5pnmWIoYTPrVu_4guXvK50';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════════════════════════
+//  DB LAYER — Supabase persistent storage
+// ══════════════════════════════════════════════════════════════
+let DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], meta_anual:29287, presupuesto_mensual:1000 };
+let _dbLoading = false;
+
+function showLoading(msg) {
+  let el = document.getElementById('_sbLoadingBar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_sbLoadingBar';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--teal);height:3px;animation:sbPulse 1.2s ease-in-out infinite;';
+    const style = document.createElement('style');
+    style.textContent = '@keyframes sbPulse{0%,100%{opacity:.4}50%{opacity:1}}';
+    document.head.appendChild(style);
+    document.body.appendChild(el);
+  }
+  const ind = document.getElementById('saveInd');
+  if (ind) { ind.textContent = msg || '⟳ Cargando...'; ind.classList.add('show'); }
+}
+function hideLoading() {
+  const el = document.getElementById('_sbLoadingBar');
+  if (el) el.remove();
+  const ind = document.getElementById('saveInd');
+  if (ind) { ind.textContent = '✓ Guardado'; setTimeout(() => ind.classList.remove('show'), 2000); }
+}
+function showSaveError(msg) {
+  const ind = document.getElementById('saveInd');
+  if (ind) { ind.textContent = '✗ ' + (msg || 'Error'); ind.style.color = 'var(--red)'; ind.classList.add('show'); setTimeout(() => { ind.classList.remove('show'); ind.style.color = ''; }, 3500); }
+}
+
+async function loadDB() {
+  showLoading('⟳ Cargando datos...');
+  try {
+    const [opps, ventas, subs, gastos] = await Promise.all([
+      sb.from('dvsv_oportunidades').select('*').order('created_at', { ascending: false }),
+      sb.from('dvsv_ventas').select('*').order('fecha', { ascending: false }),
+      sb.from('dvsv_suscripciones').select('*').order('created_at', { ascending: false }),
+      sb.from('dvsv_gastos').select('*').order('fecha', { ascending: false }),
+    ]);
+    if (opps.error) throw opps.error;
+    if (ventas.error) throw ventas.error;
+    if (subs.error) throw subs.error;
+    if (gastos.error) throw gastos.error;
+    DB.oportunidades = opps.data || [];
+    DB.ventas = ventas.data || [];
+    DB.suscripciones = subs.data || [];
+    DB.gastos = gastos.data || [];
+    hideLoading();
+  } catch(e) {
+    console.error('Supabase loadDB error:', e);
+    showSaveError('Error cargando datos');
+    hideLoading();
+  }
+}
+
+function saveDB() {
+  // In Supabase version, saving is done per-operation. This just shows indicator.
+  const ind = document.getElementById('saveInd');
+  if (ind) { ind.textContent = '✓ Guardado en Supabase'; ind.style.color = 'var(--green)'; ind.classList.add('show'); setTimeout(() => { ind.classList.remove('show'); ind.style.color = ''; }, 2200); }
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ══════════════════════════════════════════════════════════════
+//  OPORTUNIDADES — Supabase CRUD
+// ══════════════════════════════════════════════════════════════
+async function saveOportunidad() {
+  const nombre = document.getElementById('oppNombre').value.trim();
+  if (!nombre) { alert('El nombre del cliente es requerido'); return; }
+  const editId = document.getElementById('oppEditId').value;
+  const obj = {
+    nombre, contacto: document.getElementById('oppContacto').value,
+    sector: document.getElementById('oppSector').value, plan: document.getElementById('oppPlan').value,
+    valor: parseFloat(document.getElementById('oppValor').value) || 0,
+    prob: parseInt(document.getElementById('oppProb').value) || 50,
+    etapa: document.getElementById('oppEtapa').value, canal: document.getElementById('oppCanal').value,
+    ciudad: document.getElementById('oppCiudad').value, fecha: document.getElementById('oppFecha').value || null,
+    notas: document.getElementById('oppNotas').value
+  };
+  showLoading('Guardando...');
+  try {
+    if (editId) {
+      const { error } = await sb.from('dvsv_oportunidades').update(obj).eq('id', editId);
+      if (error) throw error;
+      const i = DB.oportunidades.findIndex(x => x.id === editId);
+      if (i > -1) DB.oportunidades[i] = { ...DB.oportunidades[i], ...obj };
+    } else {
+      const { data, error } = await sb.from('dvsv_oportunidades').insert([obj]).select();
+      if (error) throw error;
+      DB.oportunidades.unshift(data[0]);
+    }
+    saveDB(); closeModal('modalOportunidad'); renderPipeline();
+    document.getElementById('welcomeBanner').style.display = 'none';
+  } catch(e) { console.error(e); showSaveError('Error al guardar'); }
+}
+
+async function editOportunidad(id) {
+  const o = DB.oportunidades.find(x => x.id === id); if (!o) return;
+  document.getElementById('oppEditId').value = id;
+  document.getElementById('oppModalTitle').textContent = '✏️ Editar Oportunidad';
+  document.getElementById('oppNombre').value = o.nombre;
+  document.getElementById('oppContacto').value = o.contacto || '';
+  document.getElementById('oppSector').value = o.sector || '';
+  document.getElementById('oppPlan').value = o.plan || 'Starter $99';
+  document.getElementById('oppValor').value = o.valor || '';
+  document.getElementById('oppProb').value = o.prob || 50;
+  document.getElementById('oppEtapa').value = o.etapa || 'Prospecto';
+  document.getElementById('oppCanal').value = o.canal || 'Referido';
+  document.getElementById('oppCiudad').value = o.ciudad || '';
+  document.getElementById('oppFecha').value = o.fecha || '';
+  document.getElementById('oppNotas').value = o.notas || '';
+  openModal('modalOportunidad');
+}
+
+async function deleteOportunidad(id) {
+  if (!confirm('¿Eliminar esta oportunidad?')) return;
+  showLoading('Eliminando...');
+  try {
+    const { error } = await sb.from('dvsv_oportunidades').delete().eq('id', id);
+    if (error) throw error;
+    DB.oportunidades = DB.oportunidades.filter(x => x.id !== id);
+    saveDB(); renderPipeline();
+  } catch(e) { console.error(e); showSaveError('Error al eliminar'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VENTAS — Supabase CRUD
+// ══════════════════════════════════════════════════════════════
+async function saveVenta() {
+  const nombre = document.getElementById('vNombre').value.trim();
+  const fecha = document.getElementById('vFecha').value;
+  const monto = parseFloat(document.getElementById('vMonto').value);
+  if (!nombre || !fecha || !monto) { alert('Nombre, fecha y monto son requeridos'); return; }
+  const editId = document.getElementById('ventaEditId').value;
+  const plan = document.getElementById('vPlan').value;
+  const planName = plan === '99' ? 'Starter' : plan === '199' ? 'Growth' : plan === '299' ? 'Pro' : 'Otro';
+  const incSub = document.getElementById('vIncSub').value;
+  const obj = {
+    nombre, sector: document.getElementById('vSector').value, plan: planName, monto, fecha,
+    cobro: document.getElementById('vCobro').value, canal: document.getElementById('vCanal').value,
+    notas: document.getElementById('vNotas').value, inc_sub: incSub
+  };
+  showLoading('Guardando venta...');
+  try {
+    if (editId) {
+      const { error } = await sb.from('dvsv_ventas').update(obj).eq('id', editId);
+      if (error) throw error;
+      const i = DB.ventas.findIndex(x => x.id === editId);
+      if (i > -1) DB.ventas[i] = { ...DB.ventas[i], ...obj };
+    } else {
+      const { data, error } = await sb.from('dvsv_ventas').insert([obj]).select();
+      if (error) throw error;
+      DB.ventas.unshift(data[0]);
+      // Auto-create subscription
+      if (incSub === 'si') {
+        const subMonto = plan === '99' ? 9.99 : plan === '199' ? 19.99 : plan === '299' ? 29.99 : 9.99;
+        const subPlan = plan === '99' ? 'Básico' : plan === '199' ? 'Growth' : plan === '299' ? 'Pro' : 'Básico';
+        const subObj = { nombre, plan: subPlan, monto: subMonto, inicio: fecha, estado: 'Activa', notas: 'Creada automáticamente con la venta' };
+        const { data: sd, error: se } = await sb.from('dvsv_suscripciones').insert([subObj]).select();
+        if (!se) DB.suscripciones.unshift(sd[0]);
+      }
+      // Mark opportunity as won
+      const opp = DB.oportunidades.find(o => o.nombre.toLowerCase() === nombre.toLowerCase() && o.etapa !== 'Ganado');
+      if (opp) {
+        await sb.from('dvsv_oportunidades').update({ etapa: 'Ganado' }).eq('id', opp.id);
+        opp.etapa = 'Ganado';
+      }
+    }
+    saveDB(); closeModal('modalVenta'); renderVentas(); renderDashboard();
+    document.getElementById('welcomeBanner').style.display = 'none';
+  } catch(e) { console.error(e); showSaveError('Error al guardar venta'); }
+}
+
+async function editVenta(id) {
+  const v = DB.ventas.find(x => x.id === id); if (!v) return;
+  document.getElementById('ventaEditId').value = id;
+  document.getElementById('ventaModalTitle').textContent = '✏️ Editar Venta';
+  document.getElementById('vNombre').value = v.nombre;
+  document.getElementById('vFecha').value = v.fecha;
+  document.getElementById('vSector').value = v.sector || 'Restaurante';
+  document.getElementById('vMonto').value = v.monto;
+  document.getElementById('vCobro').value = v.cobro || 'Cobrado';
+  document.getElementById('vCanal').value = v.canal || 'Referido';
+  document.getElementById('vNotas').value = v.notas || '';
+  openModal('modalVenta');
+}
+
+async function deleteVenta(id) {
+  if (!confirm('¿Eliminar esta venta?')) return;
+  showLoading('Eliminando...');
+  try {
+    const { error } = await sb.from('dvsv_ventas').delete().eq('id', id);
+    if (error) throw error;
+    DB.ventas = DB.ventas.filter(x => x.id !== id);
+    saveDB(); renderVentas(); renderDashboard();
+  } catch(e) { console.error(e); showSaveError('Error al eliminar'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SUSCRIPCIONES — Supabase CRUD
+// ══════════════════════════════════════════════════════════════
+async function saveSuscripcion() {
+  const nombre = document.getElementById('sNombre').value.trim();
+  if (!nombre) { alert('El nombre del cliente es requerido'); return; }
+  const editId = document.getElementById('subEditId').value;
+  const plan = document.getElementById('sPlan').value;
+  const planName = plan === '9.99' ? 'Básico' : plan === '19.99' ? 'Growth' : plan === '29.99' ? 'Pro' : 'Otro';
+  const obj = {
+    nombre, plan: planName,
+    monto: parseFloat(document.getElementById('sMonto').value) || parseFloat(plan),
+    inicio: document.getElementById('sInicio').value || null,
+    estado: document.getElementById('sEstado').value,
+    notas: document.getElementById('sNotas').value
+  };
+  showLoading('Guardando suscripción...');
+  try {
+    if (editId) {
+      const { error } = await sb.from('dvsv_suscripciones').update(obj).eq('id', editId);
+      if (error) throw error;
+      const i = DB.suscripciones.findIndex(x => x.id === editId);
+      if (i > -1) DB.suscripciones[i] = { ...DB.suscripciones[i], ...obj };
+    } else {
+      const { data, error } = await sb.from('dvsv_suscripciones').insert([obj]).select();
+      if (error) throw error;
+      DB.suscripciones.unshift(data[0]);
+    }
+    saveDB(); closeModal('modalSuscripcion'); renderSuscripciones();
+  } catch(e) { console.error(e); showSaveError('Error al guardar'); }
+}
+
+async function editSuscripcion(id) {
+  const s = DB.suscripciones.find(x => x.id === id); if (!s) return;
+  document.getElementById('subEditId').value = id;
+  document.getElementById('subModalTitle').textContent = '✏️ Editar Suscripción';
+  document.getElementById('sNombre').value = s.nombre;
+  document.getElementById('sMonto').value = s.monto;
+  document.getElementById('sInicio').value = s.inicio || '';
+  document.getElementById('sEstado').value = s.estado || 'Activa';
+  document.getElementById('sNotas').value = s.notas || '';
+  openModal('modalSuscripcion');
+}
+
+async function cancelSub(id) {
+  if (!confirm('¿Marcar como cancelada?')) return;
+  showLoading('Actualizando...');
+  try {
+    const { error } = await sb.from('dvsv_suscripciones').update({ estado: 'Cancelada' }).eq('id', id);
+    if (error) throw error;
+    const s = DB.suscripciones.find(x => x.id === id);
+    if (s) s.estado = 'Cancelada';
+    saveDB(); renderSuscripciones(); renderDashboard();
+  } catch(e) { console.error(e); showSaveError('Error al cancelar'); }
+}
+
+async function deleteSuscripcion(id) {
+  if (!confirm('¿Eliminar esta suscripción?')) return;
+  showLoading('Eliminando...');
+  try {
+    const { error } = await sb.from('dvsv_suscripciones').delete().eq('id', id);
+    if (error) throw error;
+    DB.suscripciones = DB.suscripciones.filter(x => x.id !== id);
+    saveDB(); renderSuscripciones();
+  } catch(e) { console.error(e); showSaveError('Error al eliminar'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GASTOS — Supabase CRUD
+// ══════════════════════════════════════════════════════════════
+async function saveGasto() {
+  const fecha = document.getElementById('gFecha').value;
+  const monto = parseFloat(document.getElementById('gMonto').value);
+  if (!fecha || !monto) { alert('Fecha y monto son requeridos'); return; }
+  const editId = document.getElementById('gastoEditId').value;
+  const obj = {
+    fecha, categoria: document.getElementById('gCategoria').value,
+    descripcion: document.getElementById('gDescripcion').value,
+    monto, factura: document.getElementById('gFactura').value,
+    proveedor: document.getElementById('gProveedor').value
+  };
+  showLoading('Guardando gasto...');
+  try {
+    if (editId) {
+      const { error } = await sb.from('dvsv_gastos').update(obj).eq('id', editId);
+      if (error) throw error;
+      const i = DB.gastos.findIndex(x => x.id === editId);
+      if (i > -1) DB.gastos[i] = { ...DB.gastos[i], ...obj };
+    } else {
+      const { data, error } = await sb.from('dvsv_gastos').insert([obj]).select();
+      if (error) throw error;
+      DB.gastos.unshift(data[0]);
+    }
+    saveDB(); closeModal('modalGasto'); renderGastos(); renderDashboard();
+  } catch(e) { console.error(e); showSaveError('Error al guardar gasto'); }
+}
+
+async function editGasto(id) {
+  const g = DB.gastos.find(x => x.id === id); if (!g) return;
+  document.getElementById('gastoEditId').value = id;
+  document.getElementById('gFecha').value = g.fecha;
+  document.getElementById('gCategoria').value = g.categoria || 'Otros';
+  document.getElementById('gDescripcion').value = g.descripcion || '';
+  document.getElementById('gMonto').value = g.monto;
+  document.getElementById('gFactura').value = g.factura || 'Sí';
+  document.getElementById('gProveedor').value = g.proveedor || '';
+  openModal('modalGasto');
+}
+
+async function deleteGasto(id) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  showLoading('Eliminando...');
+  try {
+    const { error } = await sb.from('dvsv_gastos').delete().eq('id', id);
+    if (error) throw error;
+    DB.gastos = DB.gastos.filter(x => x.id !== id);
+    saveDB(); renderGastos();
+  } catch(e) { console.error(e); showSaveError('Error al eliminar'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CLEAR ALL — borra todas las tablas en Supabase
+// ══════════════════════════════════════════════════════════════
+async function clearAllData() {
+  if (!confirm('⚠️ ¿Borrar TODOS los datos de Supabase?\n\nEsta acción elimina permanentemente todos los registros y NO se puede deshacer.')) return;
+  showLoading('Borrando todo...');
+  try {
+    await Promise.all([
+      sb.from('dvsv_oportunidades').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      sb.from('dvsv_ventas').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      sb.from('dvsv_suscripciones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      sb.from('dvsv_gastos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    ]);
+    DB = { oportunidades: [], ventas: [], suscripciones: [], gastos: [], meta_anual: 29287, presupuesto_mensual: 1000 };
+    saveDB(); buildMonthSelector(); renderDashboard();
+    alert('✅ Todos los datos borrados de Supabase.');
+  } catch(e) { console.error(e); showSaveError('Error al borrar datos'); }
+}
+
+</script>
+</head>
+<body>
+
+<!-- ════════════ SIDEBAR ════════════ -->
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo">DataVisual <em>SV</em><sub>OPS</sub></span>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="nb-icon">📊</span>Dashboard</button>
+    <button class="nav-btn" onclick="showPage('pipeline',this)"><span class="nb-icon">🎯</span>Pipeline CRM</button>
+    <button class="nav-btn" onclick="showPage('ventas',this)"><span class="nb-icon">💰</span>Ventas</button>
+    <button class="nav-btn" onclick="showPage('suscripciones',this)"><span class="nb-icon">🔄</span>Suscripciones</button>
+    <button class="nav-btn" onclick="showPage('gastos',this)"><span class="nb-icon">📋</span>Gastos</button>
+    <button class="nav-btn" onclick="showPage('reportes',this)"><span class="nb-icon">📈</span>Reportes</button>
+    <button class="nav-btn" onclick="showPage('levantamiento',this)"><span class="nb-icon">📋</span>Levantamiento</button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="save-indicator" id="saveInd">☁ Supabase</div>
+    <button class="btn btn-danger" onclick="clearAllData()" style="font-size:11px;padding:6px 10px;width:100%;justify-content:center" title="Borrar todos los datos">🗑 Limpiar</button>
+    <div class="date-badge" id="dateBadge"></div>
+  </div>
+</aside>
+<div class="main-content">
+
+<!-- ════════════════════════════════════════════
+     PAGE 1 — DASHBOARD EJECUTIVO
+═══════════════════════════════════════════════ -->
+<div class="page active" id="page-dashboard">
+  
+  <!-- WELCOME BANNER (shows when no data) -->
+  <div id="welcomeBanner" style="display:none;background:linear-gradient(135deg,#0C1929,#111827);border:1px solid var(--teal);border-radius:var(--r-lg);padding:28px 32px;margin-bottom:20px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;background:radial-gradient(circle,rgba(0,180,204,.12) 0%,transparent 70%);pointer-events:none"></div>
+    <h2 style="font-family:var(--font-head);font-size:18px;font-weight:800;color:#F0F6FF;margin-bottom:6px">Bienvenido a tu Dashboard Operativo</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:16px;max-width:600px">Empieza registrando tu primera oportunidad o venta. Los datos se guardan automáticamente en este navegador.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="showPage('pipeline',document.querySelectorAll('.nav-btn')[1])">Agregar Oportunidad</button>
+      <button class="btn btn-secondary" onclick="showPage('ventas',document.querySelectorAll('.nav-btn')[2])">Registrar Venta</button>
+      <button class="btn btn-secondary" onclick="showPage('levantamiento',document.querySelectorAll('.nav-btn')[6])">Levantamiento de datos</button>
+    </div>
+    <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:14px">Tus datos viven en memoria mientras el dashboard está abierto. Usa el botón <strong style="color:rgba(255,255,255,.6)">Limpiar</strong> para reiniciar todos los datos.</p>
+  </div>
+<div class="sec-hdr">
+    <div><h2>Dashboard Ejecutivo</h2><p id="dashSubtitle">Resumen del mes en curso</p></div>
+    <div style="display:flex;gap:8px">
+      <select id="dashMonth" onchange="renderDashboard()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:6px 10px;font-size:12px;color:var(--txt);font-family:var(--font-body)"></select>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip" id="kpiStrip">
+    <div class="kpi-card c-teal"><div class="kpi-lbl">Ingresos del Mes</div><div class="kpi-val" id="k-ingresos">$0</div><div class="kpi-sub" id="k-ingresos-sub">–</div><div class="kpi-trend flat" id="k-ingresos-trend">–</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl">Utilidad Neta</div><div class="kpi-val" id="k-utilidad">$0</div><div class="kpi-sub" id="k-utilidad-sub">–</div><div class="kpi-trend flat" id="k-utilidad-trend">–</div></div>
+    <div class="kpi-card c-blue"><div class="kpi-lbl">Proyectos Cerrados</div><div class="kpi-val" id="k-proyectos">0</div><div class="kpi-sub" id="k-proyectos-sub">–</div><div class="kpi-trend flat" id="k-proyectos-trend">–</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-lbl">Suscriptores Activos</div><div class="kpi-val" id="k-suscriptores">0</div><div class="kpi-sub" id="k-suscriptores-sub">MRR: $0</div><div class="kpi-trend flat" id="k-suscriptores-trend">–</div></div>
+    <div class="kpi-card c-amber"><div class="kpi-lbl">Oportunidades Activas</div><div class="kpi-val" id="k-oportunidades">0</div><div class="kpi-sub" id="k-oportunidades-sub">Pipeline: $0</div><div class="kpi-trend flat">–</div></div>
+    <div class="kpi-card c-red"><div class="kpi-lbl">Tasa de Cierre</div><div class="kpi-val" id="k-cierre">0%</div><div class="kpi-sub" id="k-cierre-sub">–</div><div class="kpi-trend flat" id="k-cierre-trend">–</div></div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="dashAlerts"></div>
+
+  <!-- CHARTS ROW -->
+  <div class="g4" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>📈 Ingresos por Mes</h3><span class="cht">últimos 6 meses</span></div>
+      <div class="chart-wrap"><canvas id="chartIngresos"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>🥧 Mix de Ingresos</h3><span class="cht">este mes</span></div>
+      <div class="chart-wrap"><canvas id="chartMix" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g3" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>🎯 Pipeline por Etapa</h3><span class="cht">activo</span></div>
+      <div class="chart-wrap"><canvas id="chartPipeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>🏢 Ventas por Sector</h3><span class="cht">acumulado</span></div>
+      <div class="chart-wrap"><canvas id="chartSectores"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>📦 Ventas por Plan</h3><span class="cht">acumulado</span></div>
+      <div class="chart-wrap"><canvas id="chartPlanes"></canvas></div>
+    </div>
+  </div>
+
+  <!-- RECENT ACTIVITY -->
+  <div class="card">
+    <div class="card-hdr"><h3>⚡ Actividad Reciente</h3><span class="cht">últimas 10 acciones</span></div>
+    <div class="tbl-wrap"><table class="tbl" id="tblReciente">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Descripción</th><th>Monto</th></tr></thead>
+      <tbody id="tbodyReciente"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 2 — PIPELINE CRM
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-pipeline">
+  <div class="sec-hdr">
+    <div><h2>Pipeline CRM</h2><p>Gestión de oportunidades de negocio</p></div>
+    <button class="btn btn-primary" onclick="openModal('modalOportunidad')">+ Nueva Oportunidad</button>
+  </div>
+
+  <!-- PIPELINE STATS -->
+  <div class="g3" style="margin-bottom:14px" id="pipelineStats"></div>
+
+  <!-- KANBAN VIEW -->
+  <div class="pipeline" id="pipelineKanban"></div>
+
+  <!-- TABLE VIEW -->
+  <div class="card">
+    <div class="card-hdr">
+      <h3>📋 Todas las Oportunidades</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="searchOpp" placeholder="Buscar..." style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt);width:160px" oninput="renderPipeline()">
+        <select id="filterStage" onchange="renderPipeline()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+          <option value="">Todas las etapas</option>
+          <option>Prospecto</option><option>Demo</option><option>Propuesta</option>
+          <option>Negociación</option><option>Ganado</option><option>Perdido</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Cliente</th><th>Sector</th><th>Plan</th><th>Valor</th><th>Etapa</th><th>Prob.</th><th>Fecha</th><th>Notas</th><th>Acción</th></tr></thead>
+      <tbody id="tbodyOpp"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 3 — VENTAS
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-ventas">
+  <div class="sec-hdr">
+    <div><h2>Registro de Ventas</h2><p>Proyectos cerrados y pagados</p></div>
+    <button class="btn btn-primary" onclick="openModal('modalVenta')">+ Registrar Venta</button>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>💵 Ingresos por Mes</h3><span class="cht">proyectos</span></div>
+      <div class="chart-wrap"><canvas id="chartVentasMes"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>📊 Ventas por Plan</h3><span class="cht">distribución</span></div>
+      <div class="chart-wrap"><canvas id="chartVentasPlan" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <h3>📋 Historial de Ventas</h3>
+      <select id="filterVentaMes" onchange="renderVentas()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+        <option value="">Todos los meses</option>
+      </select>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Fecha</th><th>Cliente</th><th>Sector</th><th>Plan</th><th>Monto</th><th>Estado cobro</th><th>Canal</th><th>Notas</th><th>Acción</th></tr></thead>
+      <tbody id="tbodyVentas"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 4 — SUSCRIPCIONES
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-suscripciones">
+  <div class="sec-hdr">
+    <div><h2>Gestión de Suscripciones</h2><p>MRR · Churn · Renovaciones</p></div>
+    <button class="btn btn-primary" onclick="openModal('modalSuscripcion')">+ Nueva Suscripción</button>
+  </div>
+
+  <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-card c-teal"><div class="kpi-lbl">MRR Total</div><div class="kpi-val" id="k-mrr">$0</div><div class="kpi-sub" id="k-mrr-sub">–</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl">Suscriptores Activos</div><div class="kpi-val" id="k-sa">0</div><div class="kpi-sub">activos este mes</div></div>
+    <div class="kpi-card c-red"><div class="kpi-lbl">Cancelados</div><div class="kpi-val" id="k-cancel">0</div><div class="kpi-sub" id="k-churn-rate">churn: 0%</div></div>
+    <div class="kpi-card c-amber"><div class="kpi-lbl">Por Vencer (5 días)</div><div class="kpi-val" id="k-vencer">0</div><div class="kpi-sub">requieren renovación</div></div>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>📈 Crecimiento MRR</h3><span class="cht">histórico</span></div>
+      <div class="chart-wrap"><canvas id="chartMRR"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>🔄 Mix de Planes</h3><span class="cht">activos</span></div>
+      <div class="chart-wrap"><canvas id="chartSubPlanes" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <h3>📋 Todas las Suscripciones</h3>
+      <select id="filterSubEstado" onchange="renderSuscripciones()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+        <option value="">Todos los estados</option>
+        <option>Activa</option><option>Cancelada</option><option>Pausada</option>
+      </select>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Cliente</th><th>Plan</th><th>Monto/mes</th><th>Inicio</th><th>Próx. cobro</th><th>Estado</th><th>Meses activo</th><th>Total facturado</th><th>Acción</th></tr></thead>
+      <tbody id="tbodySub"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 5 — GASTOS
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-gastos">
+  <div class="sec-hdr">
+    <div><h2>Control de Gastos</h2><p>Gastos operativos del mes</p></div>
+    <button class="btn btn-primary" onclick="openModal('modalGasto')">+ Registrar Gasto</button>
+  </div>
+
+  <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-card c-red"><div class="kpi-lbl">Gastos del Mes</div><div class="kpi-val" id="k-gastos-mes">$0</div><div class="kpi-sub" id="k-gastos-sub">–</div></div>
+    <div class="kpi-card c-teal"><div class="kpi-lbl">Margen Operativo</div><div class="kpi-val" id="k-margen">0%</div><div class="kpi-sub">ingresos – gastos</div></div>
+    <div class="kpi-card c-amber"><div class="kpi-lbl">Mayor Gasto</div><div class="kpi-val" id="k-mayor-gasto">$0</div><div class="kpi-sub" id="k-mayor-gasto-cat">–</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl">Gastos vs Presupuesto</div><div class="kpi-val" id="k-vs-presupuesto">0%</div><div class="kpi-sub">presupuesto $1,000/mes</div></div>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>📊 Gastos por Categoría</h3><span class="cht">este mes</span></div>
+      <div class="chart-wrap"><canvas id="chartGastosCat" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>📈 Gastos vs Ingresos</h3><span class="cht">últimos 6 meses</span></div>
+      <div class="chart-wrap"><canvas id="chartGastosVsIngresos"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <h3>📋 Registro de Gastos</h3>
+      <select id="filterGastoMes" onchange="renderGastos()" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+        <option value="">Todos los meses</option>
+      </select>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Factura</th><th>Acción</th></tr></thead>
+      <tbody id="tbodyGastos"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 6 — REPORTES
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-reportes">
+  <div class="sec-hdr">
+    <div><h2>Reportes y Análisis</h2><p>Proyecciones y análisis de rendimiento</p></div>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>🎯 Proyección vs Meta Año 1</h3><span class="cht">$29,287 meta</span></div>
+      <div class="chart-wrap"><canvas id="chartProyeccion"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>🔄 Funnel de Conversión</h3><span class="cht">oportunidades → cierres</span></div>
+      <div class="chart-wrap"><canvas id="chartFunnel"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-hdr"><h3>📊 Resumen Ejecutivo Mensual</h3></div>
+    <div id="resumenEjecutivo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-top:4px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><h3>⚠️ Alertas y Recomendaciones</h3></div>
+    <div id="alertasRec"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 7 — LEVANTAMIENTO
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-levantamiento" style="max-width:none;padding:0">
+  <div style="max-width:1400px;margin:0 auto;padding:20px 24px">
+    <div class="lev-nav">
+  <div class="lev-subnav-tabs">
+    <button class="stab lev-stab lev-active" onclick="showSector('general',this)"><span class="dot"></span>General</button>
+    <button class="stab lev-stab" onclick="showSector('restaurante',this)"><span class="dot"></span>Restaurante</button>
+    <button class="stab lev-stab" onclick="showSector('distribuidora',this)"><span class="dot"></span>Distribuidora</button>
+    <button class="stab lev-stab" onclick="showSector('clinica',this)"><span class="dot"></span>Clínica / Salud</button>
+    <button class="stab lev-stab" onclick="showSector('ferreteria',this)"><span class="dot"></span>Ferretería</button>
+    <button class="stab lev-stab" onclick="showSector('colegio',this)"><span class="dot"></span>Colegio / Academia</button>
+    <button class="stab lev-stab" onclick="showSector('taller',this)"><span class="dot"></span>Taller Automotriz</button>
+  </div>
+  <div class="nav-right">
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+</div>
+    <div class="lev-container">
+<!-- ═══════════════════════════════════════════════════
+     FORMULARIO GENERAL (todas las contrataciones)
+════════════════════════════════════════════════════ -->
+<div class="lev-page active" id="lev-page-general">
+
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,var(--navy),#1E3A5C)">
+      <div class="sector-badge">📋 Formulario Universal</div>
+      <h1>Levantamiento General de Información</h1>
+      <p>Completar en la primera reunión con el cliente — duración 30–45 minutos — aplica a TODOS los sectores</p>
+    </div>
+    <div class="fh-meta" style="background:#1B3A5C">
+      <div class="mi"><span class="ml">Nombre del negocio</span><input placeholder="El Rincón Familiar, S.A."></div>
+      <div class="mi"><span class="ml">Nombre del dueño / contacto</span><input placeholder="Lic. María González"></div>
+      <div class="mi"><span class="ml">Fecha de levantamiento</span><input type="date"></div>
+      <div class="mi"><span class="ml">Ejecutivo DataVisual SV</span><input placeholder="Tu nombre"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-navy">📋 Aplicar a todos los clientes</span>
+        <span class="tag tag-teal">⏱ 30–45 min</span>
+        <span class="tag tag-green">✓ Previo a cualquier cotización</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Formulario v2.0 · 2025</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: Datos del negocio -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:var(--teal)">1</div>
+      <h2>Datos del Negocio</h2>
+      <span class="badge">Perfil base</span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field"><label>Nombre del negocio <span class="req">*</span></label><input placeholder="Nombre legal o comercial"></div>
+        <div class="field"><label>Sector / Giro <span class="req">*</span></label>
+          <select><option value="">Seleccionar</option><option>Restaurante / Food Service</option><option>Distribuidora / Mayorista</option><option>Clínica / Salud privada</option><option>Ferretería / Construcción</option><option>Colegio / Academia</option><option>Taller Automotriz</option><option>Agencia de viajes</option><option>Otro</option></select>
+        </div>
+        <div class="field"><label>Ciudad / Municipio</label><input placeholder="San Salvador"></div>
+        <div class="field"><label>Años en operación <span class="req">*</span></label>
+          <select><option>Menos de 1 año</option><option>1–2 años</option><option>3–5 años</option><option>6–10 años</option><option>Más de 10 años</option></select>
+        </div>
+        <div class="field"><label>Número de empleados <span class="req">*</span></label>
+          <select><option>1–5</option><option>6–15</option><option>16–30</option><option>31–60</option><option>Más de 60</option></select>
+        </div>
+        <div class="field"><label>Ventas mensuales aproximadas</label>
+          <select><option>Menos de $5,000</option><option>$5,000–$15,000</option><option>$15,000–$35,000</option><option>$35,000–$75,000</option><option>Más de $75,000</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 2: Estado actual de datos -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:#7C3AED">2</div>
+      <h2>Estado Actual de los Datos</h2>
+      <span class="badge">Diagnóstico técnico</span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field"><label>¿Tienen sistema de facturación o POS? <span class="req">*</span></label>
+          <select><option>No — registro manual / cuadernos</option><option>Sí — Alegra</option><option>Sí — QuickBooks</option><option>Sí — Sistema propio</option><option>Sí — Otro (especificar)</option></select>
+        </div>
+        <div class="field"><label>¿Llevan contabilidad formal con contador?</label>
+          <select><option>No</option><option>Sí — contador externo</option><option>Sí — contador interno</option><option>Solo declaraciones básicas</option></select>
+        </div>
+        <div class="field"><label>¿Tienen datos en Excel? ¿Desde cuándo?</label>
+          <select><option>No tenemos Excel</option><option>Sí — menos de 3 meses</option><option>Sí — 3–12 meses</option><option>Sí — más de 1 año</option><option>Sí — más de 3 años</option></select>
+        </div>
+        <div class="field"><label>¿Cómo describiría sus datos actualmente?</label>
+          <select><option>Muy desordenados — cuadernos y papeles</option><option>Parcialmente organizados — Excel básico</option><option>Organizados — Excel bien estructurado</option><option>Muy organizados — sistema formal</option></select>
+        </div>
+        <div class="field"><label>¿Con qué frecuencia actualizan sus datos?</label>
+          <select><option>Diariamente</option><option>Semanalmente</option><option>Quincenalmente</option><option>Mensualmente</option><option>Irregularmente</option></select>
+        </div>
+        <div class="field"><label>¿Cuánto tiempo disponible para enviarnos datos?</label>
+          <select><option>Menos de 30 minutos al mes</option><option>30–60 minutos al mes</option><option>1–2 horas al mes</option><option>Más de 2 horas — lo que sea necesario</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 3: Necesidades y decisiones clave -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:var(--green-md)">3</div>
+      <h2>Necesidades y Decisiones Clave</h2>
+      <span class="badge">Define los KPIs prioritarios</span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid one">
+        <div class="field"><label>¿Cuál es la decisión más importante que toman cada semana? <span class="req">*</span></label>
+          <textarea placeholder="Ej: Qué producto pedir, a qué vendedor asignar clientes, qué plato cambiar de precio..."></textarea>
+        </div>
+        <div class="field"><label>¿Qué número miran primero al llegar por la mañana? <span class="req">*</span></label>
+          <textarea placeholder="Ej: Las ventas del día anterior, cuántos pedidos entraron, qué clientes pagaron..."></textarea>
+        </div>
+        <div class="field"><label>¿Qué problema les quitaría el sueño si no lo supieran hoy? <span class="req">*</span></label>
+          <textarea placeholder="Ej: Si algún vendedor no está vendiendo, si el food cost subió, si hay clientes morosos..."></textarea>
+        </div>
+        <div class="field"><label>¿Quién más va a usar el dashboard además del dueño?</label>
+          <input placeholder="Ej: Gerente de ventas, contador, socios, jefe de cocina..."></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 4: Plan elegido y branding -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:var(--amber-md)">4</div>
+      <h2>Plan Contratado y Branding</h2>
+      <span class="badge">Define el alcance y entregable</span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid three">
+        <div class="field"><label>Plan seleccionado <span class="req">*</span></label>
+          <select><option>STARTER — $99</option><option>GROWTH — $199</option><option>PRO — $299</option></select>
+        </div>
+        <div class="field"><label>Modalidad de entrega</label>
+          <select><option>LOCAL (archivo HTML en PC)</option><option>WEB BÁSICO (URL Netlify)</option><option>WEB PREMIUM (dominio propio)</option></select>
+        </div>
+        <div class="field"><label>Plan de mantenimiento</label>
+          <select><option>Sin mantenimiento</option><option>Básico — $9.99/mes</option><option>Growth — $19.99/mes</option><option>Pro — $29.99/mes</option></select>
+        </div>
+      </div>
+      <div class="field-grid" style="margin-top:12px">
+        <div class="field"><label>¿Tienen logo corporativo?</label>
+          <select><option>Sí — PNG o JPG disponible</option><option>Sí — pero en formato incorrecto</option><option>No tenemos logo</option></select>
+        </div>
+        <div class="field"><label>¿Tienen colores corporativos definidos?</label>
+          <select><option>Sí — tenemos manual de marca</option><option>Sí — los conocemos de memoria</option><option>No — usar criterio DataVisual SV</option></select>
+        </div>
+      </div>
+      <div class="field-grid one" style="margin-top:12px">
+        <div class="field"><label>Notas adicionales / Expectativas especiales</label>
+          <textarea placeholder="¿Hay algo específico que el cliente mencionó como muy importante? ¿Comparaciones, alertas especiales, datos históricos?"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALCANCES GENERALES -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:var(--navy)">5</div>
+      <h2>Alcance del Servicio — Qué Incluye y Qué No Incluye</h2>
+      <span class="badge">Leer al cliente antes de firmar</span>
+    </div>
+    <div class="section-body">
+      <div class="scope-grid">
+        <div class="scope-col scope-yes">
+          <h4>✅ DataVisual SV SÍ hace</h4>
+          <div class="scope-item"><span class="si">✅</span>Visualizar datos que el cliente entrega</div>
+          <div class="scope-item"><span class="si">✅</span>Organizar y limpiar datos del cliente ($49 adicional si requiere limpieza extensa)</div>
+          <div class="scope-item"><span class="si">✅</span>Construir el dashboard con KPIs acordados en este formulario</div>
+          <div class="scope-item"><span class="si">✅</span>Personalizar con logo, colores y nombre del negocio</div>
+          <div class="scope-item"><span class="si">✅</span>Capacitar al cliente en la lectura del dashboard</div>
+          <div class="scope-item"><span class="si">✅</span>Actualizar el dashboard mensualmente (si contrata mantenimiento)</div>
+          <div class="scope-item"><span class="si">✅</span>Soporte por WhatsApp para lectura e interpretación</div>
+          <div class="scope-item"><span class="si">✅</span>Hacer los ajustes incluidos en el plan (1, 2 o 3 rondas)</div>
+        </div>
+        <div class="scope-col scope-no">
+          <h4>❌ DataVisual SV NO hace</h4>
+          <div class="scope-item"><span class="si">❌</span>Generar ni inventar datos — solo visualiza lo que el cliente entrega</div>
+          <div class="scope-item"><span class="si">❌</span>Auditar la contabilidad ni revisar la fiscalidad del negocio</div>
+          <div class="scope-item"><span class="si">❌</span>Decidir qué KPIs debe mostrar el dashboard sin consenso del cliente</div>
+          <div class="scope-item"><span class="si">❌</span>Programar sistemas ERP, facturación ni punto de venta</div>
+          <div class="scope-item"><span class="si">❌</span>Dar asesoría de inversiones ni tomar decisiones empresariales</div>
+          <div class="scope-item"><span class="si">❌</span>Garantizar la exactitud de datos que el cliente entrega</div>
+          <div class="scope-item"><span class="si">❌</span>Ajustes ilimitados — solo los incluidos en el plan contratado</div>
+          <div class="scope-item"><span class="si">❌</span>Trabajar con datos que incluyan nombres o DUI de personas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRMA -->
+  <div class="section">
+    <div class="section-hdr">
+      <div class="sn" style="background:var(--red)">6</div>
+      <h2>Conformidad y Autorización para Iniciar</h2>
+    </div>
+    <div class="section-body">
+      <div class="prereq-list" style="margin-bottom:16px">
+        <label class="check-row"><input type="checkbox"> <label>He leído y entiendo el alcance del servicio (qué incluye y qué no incluye)</label></label>
+        <label class="check-row"><input type="checkbox"> <label>Entiendo que el pago es 100% adelantado antes de iniciar el trabajo</label></label>
+        <label class="check-row"><input type="checkbox"> <label>Me comprometo a entregar los datos en el formato y tiempo acordado</label></label>
+        <label class="check-row"><input type="checkbox"> <label>Entiendo que los datos del dashboard provienen de la información que yo entrego y que la precisión depende de mis registros</label></label>
+        <label class="check-row"><input type="checkbox"> <label>He acordado los KPIs y funcionalidades específicas que se mostrarán en el dashboard</label></label>
+      </div>
+      <div class="sig-grid">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-label">Firma del cliente</div>
+          <div class="sig-name" id="clientName">___________________________</div>
+          <div class="sig-title">Representante legal / Dueño del negocio</div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-label">Ejecutivo DataVisual SV</div>
+          <div class="sig-name">___________________________</div>
+          <div class="sig-title">DataVisual SV, S.A.S. · hola@datavisualsv.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">hola@datavisualsv.com · +503 XXXX-XXXX · www.datavisualsv.com<br>Formulario de Levantamiento General v2.0 · 2025</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTOR: RESTAURANTE
+════════════════════════════════════════════════════ -->
+<div class="lev-page" id="lev-page-restaurante">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#7C2D12,#C2410C)">
+      <div class="sector-badge">🍽️ Sector Restaurante</div>
+      <h1>Levantamiento — Restaurante / Food Service</h1>
+      <p>Formulario específico para restaurantes, cafeterías, comidas rápidas, servicios de catering y food trucks</p>
+    </div>
+    <div class="fh-meta" style="background:#9A3412">
+      <div class="mi"><span class="ml">Nombre del restaurante</span><input placeholder="El Rincón Familiar"></div>
+      <div class="mi"><span class="ml">Tipo de establecimiento</span><input placeholder="Restaurante familiar, cafetería, fast food..."></div>
+      <div class="mi"><span class="ml">Número de mesas / capacidad</span><input placeholder="Ej: 20 mesas, 80 personas"></div>
+      <div class="mi"><span class="ml">Ticket promedio estimado</span><input placeholder="Ej: $8–$12 por persona"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: GROWTH $199</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 6–8 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 4 días hábiles</span>
+        <span class="tag tag-navy">📊 Pestañas: 4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRERREQUISITOS -->
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#C2410C">A</div><h2>Prerrequisitos — Datos que el Cliente Debe Entregar</h2><span class="badge">Verificar antes de iniciar</span></div>
+    <div class="section-body">
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Ventas diarias del período (mínimo 1 mes)</div>
+            <div class="pi-desc">Excel o foto de cuaderno: Fecha | Total ventas del día | Número de clientes atendidos. Si tiene sistema de POS (Alegra, etc.), exportar el reporte de ventas.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — sin esto no se puede construir el dashboard</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Ventas por plato/producto con costo estimado</div>
+            <div class="pi-desc">Excel: Nombre del plato | Unidades vendidas en el mes | Precio de venta | Costo aproximado de ingredientes. El costo no tiene que ser exacto — el estimado sirve para calcular food cost.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — sin esto no se puede calcular food cost</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Registro de meseros y ventas por mesero</div>
+            <div class="pi-desc">Excel: Nombre del mesero | Ventas totales del mes | Número de mesas atendidas. Si no tienen este registro, se puede construir solo la parte de ventas generales.</div>
+            <div class="pi-req should">◈ RECOMENDADO — permite análisis de rendimiento del equipo</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Horarios de servicio y capacidad</div>
+            <div class="pi-desc">Dato verbal: ¿A qué hora abren? ¿A qué hora cierran? ¿Cuántas mesas tienen? ¿Tienen diferencia entre almuerzo y cena?</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — necesario para calcular ocupación</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Logo del restaurante en PNG o JPG</div>
+            <div class="pi-desc">Archivo de imagen del logo. Si no tienen, se puede usar el nombre del restaurante con tipografía estándar.</div>
+            <div class="pi-req should">◈ RECOMENDADO — para branding del dashboard</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">6</div>
+          <div class="pi-info">
+            <div class="pi-title">Gastos del período (opcional pero valioso)</div>
+            <div class="pi-desc">Excel: Concepto | Monto (nómina, renta, servicios, ingredientes, proveedores). Permite calcular rentabilidad real y margen neto.</div>
+            <div class="pi-req nice">○ OPCIONAL — enriquece el análisis pero no es bloqueante</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs A INCLUIR -->
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#C2410C">B</div><h2>KPIs a Incluir en el Dashboard</h2><span class="badge">Marcar los que aplican</span></div>
+    <div class="section-body">
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Seleccionar los indicadores según el plan contratado. STARTER: máx. 5. GROWTH: máx. 10. PRO: ilimitados.</p>
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ventas del mes</div><div class="kc-desc">Total facturado en el período seleccionado vs mes anterior</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Food cost %</div><div class="kc-desc">Costo de ingredientes / ventas totales. Meta del sector: 28–35%</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ticket promedio</div><div class="kc-desc">Venta promedio por cliente o por mesa atendida</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Clientes del día / mes</div><div class="kc-desc">Total de clientes atendidos con tendencia diaria</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Horas pico</div><div class="kc-desc">Distribución de ventas por hora del día (requiere registro por hora)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Plato más vendido</div><div class="kc-desc">Top 5 platillos por unidades vendidas en el período</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Plato más rentable</div><div class="kc-desc">Top 5 platillos por margen de ganancia (requiere costos)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Mesero top</div><div class="kc-desc">Ranking de ventas por mesero (requiere datos por mesero)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Tasa de cancelaciones</div><div class="kc-desc">% de reservas o pedidos cancelados vs total</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Meta vs real</div><div class="kc-desc">Comparativo ventas actuales vs meta definida por el dueño</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Comparativo mensual</div><div class="kc-desc">Ventas este mes vs mismo mes año anterior (requiere histórico)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ocupación de mesas</div><div class="kc-desc">% de mesas ocupadas vs capacidad total del local</div></div></div>
+      </div>
+      <div class="field-grid one" style="margin-top:12px">
+        <div class="field"><label>KPIs adicionales específicos del cliente</label>
+          <input placeholder="Ej: Ventas por día de semana, consumo de bebidas vs comida, costo de desperdicio..."></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESFUERZO Y TAREAS -->
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#C2410C">C</div><h2>Esfuerzo Estimado y Tareas de Construcción</h2><span class="badge">Uso interno DataVisual SV</span></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas por Tarea</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">0.5h</div><div class="el">Levantamiento y revisión de datos</div></div>
+          <div class="eff-item"><div class="ev">1.5h</div><div class="el">Limpieza y normalización de datos</div></div>
+          <div class="eff-item"><div class="ev">3.0h</div><div class="el">Construcción del dashboard</div></div>
+          <div class="eff-item"><div class="ev">1.0h</div><div class="el">Ajustes, revisión y entrega</div></div>
+        </div>
+        <div class="effort-tasks" style="margin-top:14px">
+          <div class="eff-task"><span class="et-n">T1</span> Recibir y revisar todos los archivos del cliente</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar fechas, montos y nombres de platos</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular food cost por plato y total</div>
+          <div class="eff-task"><span class="et-n">T4</span> Crear tabla de KPIs agregados por día/semana/mes</div>
+          <div class="eff-task"><span class="et-n">T5</span> Integrar logo y colores corporativos en la plantilla</div>
+          <div class="eff-task"><span class="et-n">T6</span> Configurar pestaña de Ventas con gráficas</div>
+          <div class="eff-task"><span class="et-n">T7</span> Configurar pestaña de Costos / Food Cost</div>
+          <div class="eff-task"><span class="et-n">T8</span> Configurar pestaña de Equipo (meseros, si aplica)</div>
+          <div class="eff-task"><span class="et-n">T9</span> Configurar pestaña de KPIs Ejecutivos</div>
+          <div class="eff-task"><span class="et-n">T10</span> Activar semáforos y alertas automáticas</div>
+          <div class="eff-task"><span class="et-n">T11</span> Pruebas con datos reales — verificar cálculos</div>
+          <div class="eff-task"><span class="et-n">T12</span> Grabar video de capacitación (20–45 min)</div>
+          <div class="eff-task"><span class="et-n">T13</span> Enviar borrador y gestionar rondas de ajuste</div>
+          <div class="eff-task"><span class="et-n">T14</span> Entrega final + subida a Netlify si aplica</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>📌 Nota sobre datos sensibles:</strong>
+    Los registros de ventas de restaurantes son confidenciales. DataVisual SV no comparte ni divulga datos financieros del cliente. Los archivos originales se eliminan 90 días después de la entrega final del dashboard.
+  </div>
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Restaurante v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+<!-- ═══ DISTRIBUIDORA ═══ -->
+<div class="lev-page" id="lev-page-distribuidora">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#1E3A5C,#2563EB)">
+      <div class="sector-badge">🚚 Sector Distribuidora</div>
+      <h1>Levantamiento — Distribuidora / Comercio Mayorista</h1>
+      <p>Para distribuidoras, mayoristas, importadoras, empresas con equipo de ventas y rutas</p>
+    </div>
+    <div class="fh-meta" style="background:#1E40AF">
+      <div class="mi"><span class="ml">Nombre del negocio</span><input placeholder="ImportElite SV, S.A."></div>
+      <div class="mi"><span class="ml">Número de vendedores</span><input placeholder="Ej: 8 vendedores externos"></div>
+      <div class="mi"><span class="ml">Número de clientes activos</span><input placeholder="Ej: ~150 clientes"></div>
+      <div class="mi"><span class="ml">Zonas de cobertura</span><input placeholder="Ej: San Salvador, Santa Ana, Sonsonate"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: PRO $299</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 10–14 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 5–6 días hábiles</span>
+        <span class="tag tag-navy">📊 Pestañas: 5</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#2563EB">A</div><h2>Prerrequisitos — Datos Requeridos</h2><span class="badge">Verificar antes de iniciar</span></div>
+    <div class="section-body">
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Pedidos del período con detalle completo</div>
+            <div class="pi-desc">Excel: Fecha | Cliente | Vendedor | Producto | Unidades | Precio unitario | Total. Mínimo 1 mes completo. Máximo 6 meses para comparativo histórico.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — es la fuente principal del dashboard</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Cartera de clientes activos</div>
+            <div class="pi-desc">Excel: Nombre del cliente | Zona/ruta | Estado de crédito | Fecha del último pedido | Límite de crédito. Si no tienen CRM, una lista simple sirve.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para análisis de actividad de clientes</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Cuentas por cobrar actuales</div>
+            <div class="pi-desc">Excel: Cliente | Monto total adeudado | Fecha de vencimiento | Días vencido | Estado. Es el dato más crítico para el flujo de caja del negocio.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — sin esto no hay análisis de mora</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Metas de ventas por vendedor</div>
+            <div class="pi-desc">Dato del gerente: ¿Cuánto debe vender cada vendedor al mes? Puede ser una meta global o individual. Si no hay metas formales, se establece una con el dueño.</div>
+            <div class="pi-req should">◈ RECOMENDADO — activa el KPI de cumplimiento de meta</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Lista de productos con costo unitario</div>
+            <div class="pi-desc">Excel: SKU o código | Nombre del producto | Precio de venta | Costo de compra. Necesario para calcular margen por producto.</div>
+            <div class="pi-req should">◈ RECOMENDADO — permite análisis de rentabilidad por producto</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">6</div>
+          <div class="pi-info">
+            <div class="pi-title">Inventario actual</div>
+            <div class="pi-desc">Excel: Producto | Stock actual | Punto de reorden mínimo. Si no tienen inventario formal, se puede construir solo con los datos de pedidos.</div>
+            <div class="pi-req nice">○ OPCIONAL — activa alertas de stock crítico</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#2563EB">B</div><h2>KPIs a Incluir</h2></div>
+    <div class="section-body">
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ventas totales del mes</div><div class="kc-desc">Total facturado vs mes anterior y vs meta mensual</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ranking de vendedores vs meta</div><div class="kc-desc">Cada vendedor: ventas reales / meta = % cumplimiento con barra de progreso</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Clientes activos vs inactivos</div><div class="kc-desc">Clientes que compraron en los últimos 30/60/90 días vs total de cartera</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Cuentas por cobrar y mora</div><div class="kc-desc">Total adeudado, % vencido, listado de clientes con mora crítica</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Stock crítico</div><div class="kc-desc">Productos bajo el punto de reorden mínimo (requiere inventario)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Margen por producto</div><div class="kc-desc">Ganancia bruta por producto: (precio venta - costo) × unidades vendidas</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ventas por zona / ruta</div><div class="kc-desc">Mapa de rendimiento por área geográfica de cobertura</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Top 10 clientes</div><div class="kc-desc">Clientes que generan el mayor volumen de compra en el período</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Top 10 productos</div><div class="kc-desc">Productos más vendidos por unidades y por monto</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Pedido promedio por cliente</div><div class="kc-desc">Monto promedio de compra por cliente en el período</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Frecuencia de compra</div><div class="kc-desc">Cuántas veces al mes compra cada cliente en promedio</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Comparativo mensual</div><div class="kc-desc">Evolución de ventas en los últimos 6 meses con tendencia</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#2563EB">C</div><h2>Esfuerzo Estimado y Tareas</h2><span class="badge">Uso interno</span></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas — Distribuidora (Plan PRO)</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">1.0h</div><div class="el">Recepción y diagnóstico de datos</div></div>
+          <div class="eff-item"><div class="ev">3.0h</div><div class="el">Limpieza y normalización (3 fuentes)</div></div>
+          <div class="eff-item"><div class="ev">6.0h</div><div class="el">Construcción de 5 pestañas</div></div>
+          <div class="eff-item"><div class="ev">2.0h</div><div class="el">Pruebas, ajustes y entrega</div></div>
+        </div>
+        <div class="effort-tasks">
+          <div class="eff-task"><span class="et-n">T1</span> Recibir pedidos, cartera y CxC del cliente</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar nombres de clientes y vendedores</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular métricas de actividad de clientes</div>
+          <div class="eff-task"><span class="et-n">T4</span> Crear tabla de cumplimiento de metas por vendedor</div>
+          <div class="eff-task"><span class="et-n">T5</span> Calcular márgenes por producto (si hay costos)</div>
+          <div class="eff-task"><span class="et-n">T6</span> Construir pestaña Ventas General</div>
+          <div class="eff-task"><span class="et-n">T7</span> Construir pestaña Vendedores vs Meta</div>
+          <div class="eff-task"><span class="et-n">T8</span> Construir pestaña Clientes (activos/inactivos)</div>
+          <div class="eff-task"><span class="et-n">T9</span> Construir pestaña CxC y Mora</div>
+          <div class="eff-task"><span class="et-n">T10</span> Construir pestaña Inventario y Stock</div>
+          <div class="eff-task"><span class="et-n">T11</span> Activar alertas RAG en todos los KPIs</div>
+          <div class="eff-task"><span class="et-n">T12</span> Panel ejecutivo con resumen general</div>
+          <div class="eff-task"><span class="et-n">T13</span> Pruebas y verificación de cálculos</div>
+          <div class="eff-task"><span class="et-n">T14</span> Capacitación 1 hora + manual PDF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Distribuidora v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+<!-- ═══ CLÍNICA ═══ -->
+<div class="lev-page" id="lev-page-clinica">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#065F46,#059669)">
+      <div class="sector-badge">🏥 Sector Clínica / Salud</div>
+      <h1>Levantamiento — Clínica / Consultorio Privado</h1>
+      <p>Para clínicas médicas, consultorios dentales, centros de salud privados y especialistas independientes</p>
+    </div>
+    <div class="fh-meta" style="background:#047857">
+      <div class="mi"><span class="ml">Nombre de la clínica</span><input placeholder="Clínica Sonrisa Perfecta"></div>
+      <div class="mi"><span class="ml">Especialidad(es)</span><input placeholder="Odontología, Medicina General..."></div>
+      <div class="mi"><span class="ml">Número de doctores</span><input placeholder="Ej: 3 doctores"></div>
+      <div class="mi"><span class="ml">Pacientes promedio / día</span><input placeholder="Ej: 30–40 pacientes"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: GROWTH $199</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 7–9 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 4–5 días hábiles</span>
+        <span class="tag tag-navy">⚠️ Datos solo con códigos — nunca nombres</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#059669">A</div><h2>Prerrequisitos</h2></div>
+    <div class="section-body">
+      <div class="disclaimer" style="margin-bottom:14px">
+        <strong>⚠️ IMPORTANTE — PRIVACIDAD DE PACIENTES:</strong>
+        DataVisual SV NUNCA solicita ni procesa nombres, DUI, ni datos de identificación de pacientes. Todos los registros deben usar CÓDIGO de paciente (ej: P-0142). Si el cliente entrega datos con nombres, se devolverán sin procesar para que los reemplacen con códigos.
+      </div>
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Registro de citas del período</div>
+            <div class="pi-desc">Excel: Fecha | CÓDIGO paciente (no nombre) | Doctor | Procedimiento | Monto cobrado | Estado (atendido/cancelado/reagendado). Mínimo 1 mes.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — fuente principal del dashboard</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Lista de procedimientos y precios</div>
+            <div class="pi-desc">Excel o lista simple: Nombre del procedimiento | Precio estándar | Duración aproximada (minutos).</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para análisis de ingresos por procedimiento</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Cuentas por cobrar de pacientes</div>
+            <div class="pi-desc">Excel: CÓDIGO paciente | Monto adeudado | Fecha del servicio | Días vencido. NUNCA incluir nombres ni DUI.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para KPI de mora de pacientes</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Lista de doctores y especialidades</div>
+            <div class="pi-desc">Dato verbal: Nombre del doctor (solo para el dashboard interno del cliente) | Especialidad | Días de consulta | Horario.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para KPI de ingresos por doctor</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Gastos operativos del período</div>
+            <div class="pi-desc">Excel: Concepto | Monto (renta, suministros médicos, nómina administrativa, servicios). Para calcular rentabilidad neta de la clínica.</div>
+            <div class="pi-req nice">○ OPCIONAL — permite calcular margen neto real</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#059669">B</div><h2>KPIs a Incluir</h2></div>
+    <div class="section-body">
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ingresos por doctor</div><div class="kc-desc">Facturación mensual por cada especialista activo</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ocupación de agenda</div><div class="kc-desc">% de citas realizadas vs capacidad máxima de agenda</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Tasa de cancelaciones</div><div class="kc-desc">% de citas canceladas o no asistidas del total programado</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Mora de pacientes</div><div class="kc-desc">Total adeudado por pacientes con desglose por antigüedad</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Procedimientos más realizados</div><div class="kc-desc">Top 5 por volumen de casos atendidos en el período</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Procedimientos más rentables</div><div class="kc-desc">Top 5 por ingreso generado (precio × volumen)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ingresos totales del mes</div><div class="kc-desc">Total facturado vs mes anterior</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Pacientes nuevos vs recurrentes</div><div class="kc-desc">Cuántos pacientes son nuevos vs cuántos regresan (requiere historial)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ticket promedio por visita</div><div class="kc-desc">Monto promedio cobrado por cada cita atendida</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#059669">C</div><h2>Esfuerzo Estimado y Tareas</h2></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas — Clínica (Plan GROWTH)</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">0.5h</div><div class="el">Verificación de privacidad de datos</div></div>
+          <div class="eff-item"><div class="ev">2.0h</div><div class="el">Limpieza y anonimización</div></div>
+          <div class="eff-item"><div class="ev">4.0h</div><div class="el">Construcción del dashboard</div></div>
+          <div class="eff-item"><div class="ev">1.5h</div><div class="el">Pruebas y entrega</div></div>
+        </div>
+        <div class="effort-tasks">
+          <div class="eff-task"><span class="et-n">T1</span> Verificar que NO hay nombres ni DUI en los datos</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar procedimientos y códigos de paciente</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular métricas de ocupación por doctor</div>
+          <div class="eff-task"><span class="et-n">T4</span> Calcular ingresos reales vs citas canceladas</div>
+          <div class="eff-task"><span class="et-n">T5</span> Construir pestaña Ingresos y Ocupación</div>
+          <div class="eff-task"><span class="et-n">T6</span> Construir pestaña Procedimientos</div>
+          <div class="eff-task"><span class="et-n">T7</span> Construir pestaña Cuentas por Cobrar</div>
+          <div class="eff-task"><span class="et-n">T8</span> Activar alertas de mora crítica</div>
+          <div class="eff-task"><span class="et-n">T9</span> Pruebas y verificación sin datos personales</div>
+          <div class="eff-task"><span class="et-n">T10</span> Capacitación y entrega</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Clínica v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+<!-- ═══ FERRETERÍA ═══ -->
+<div class="lev-page" id="lev-page-ferreteria">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#78350F,#B45309)">
+      <div class="sector-badge">🔧 Sector Ferretería</div>
+      <h1>Levantamiento — Ferretería / Comercio de Construcción</h1>
+      <p>Para ferreterías, tiendas de materiales, distribuidoras de herramientas y construcción</p>
+    </div>
+    <div class="fh-meta" style="background:#92400E">
+      <div class="mi"><span class="ml">Nombre de la ferretería</span><input placeholder="El Tornillo de Oro"></div>
+      <div class="mi"><span class="ml">Número de sucursales</span><input placeholder="Ej: 2 sucursales"></div>
+      <div class="mi"><span class="ml">¿Manejan crédito a clientes?</span>
+        <select style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:4px 8px;font-size:12px;color:#fff;font-family:'Inter',sans-serif">
+          <option>Sí — crédito formal</option><option>Sí — crédito informal / fiado</option><option>No — solo contado</option>
+        </select>
+      </div>
+      <div class="mi"><span class="ml">SKUs aproximados en inventario</span><input placeholder="Ej: ~500 productos"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: GROWTH $199</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 8–11 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 4–5 días hábiles</span>
+        <span class="tag tag-navy">📊 Pestañas: 4</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#B45309">A</div><h2>Prerrequisitos</h2></div>
+    <div class="section-body">
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Ventas del período por producto</div>
+            <div class="pi-desc">Excel: Fecha | Producto/SKU | Unidades vendidas | Precio de venta | Costo unitario. Por sucursal en hojas separadas si hay más de una.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Inventario actual con costos</div>
+            <div class="pi-desc">Excel: SKU | Descripción del producto | Stock actual | Costo unitario | Punto de reorden mínimo. Si no tienen punto de reorden, se establece uno con el dueño.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para análisis ABC y stock crítico</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Cuentas por cobrar (si manejan crédito)</div>
+            <div class="pi-desc">Excel: Nombre del cliente | Monto adeudado | Fecha de la compra | Fecha de vencimiento del crédito | Estado. Solo si manejan crédito a clientes.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO si hay crédito — omitir si es solo contado</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Categorías o líneas de productos</div>
+            <div class="pi-desc">Lista verbal o Excel: ¿En qué categorías organizan sus productos? (Ej: Plomería, Electricidad, Pintura, Herramientas, Ferretería general). Necesario para análisis por categoría.</div>
+            <div class="pi-req should">◈ RECOMENDADO — permite análisis de rentabilidad por línea</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Datos separados por sucursal</div>
+            <div class="pi-desc">Si tienen 2+ sucursales: ventas e inventario separados por sucursal en hojas o archivos diferentes.</div>
+            <div class="pi-req should">◈ RECOMENDADO si hay más de 1 sucursal</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#B45309">B</div><h2>KPIs a Incluir</h2></div>
+    <div class="section-body">
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ventas totales del mes</div><div class="kc-desc">Total facturado vs mes anterior</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ventas por sucursal</div><div class="kc-desc">Comparativo de rendimiento entre sucursales (si aplica)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Análisis ABC de productos</div><div class="kc-desc">A: 20% de productos que generan 80% de ventas. B: siguientes 30%. C: los demás.</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Stock crítico</div><div class="kc-desc">Alerta de productos bajo el punto de reorden mínimo</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Capital frenado en inventario</div><div class="kc-desc">Valor total del inventario sin movimiento en los últimos 60 días</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">CxC y mora (si aplica)</div><div class="kc-desc">Total adeudado, % vencido y clientes con saldo crítico</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Margen por categoría</div><div class="kc-desc">Ganancia bruta por línea de producto</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Rotación de inventario</div><div class="kc-desc">Cuántas veces se repone el inventario de cada categoría en el mes</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Top 10 productos más vendidos</div><div class="kc-desc">Por unidades y por monto generado</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#B45309">C</div><h2>Esfuerzo Estimado y Tareas</h2></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas — Ferretería (Plan GROWTH)</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">1.0h</div><div class="el">Recepción y diagnóstico</div></div>
+          <div class="eff-item"><div class="ev">2.5h</div><div class="el">Limpieza (inventario + ventas)</div></div>
+          <div class="eff-item"><div class="ev">5.0h</div><div class="el">Construcción con análisis ABC</div></div>
+          <div class="eff-item"><div class="ev">1.5h</div><div class="el">Ajustes y entrega</div></div>
+        </div>
+        <div class="effort-tasks">
+          <div class="eff-task"><span class="et-n">T1</span> Recibir y revisar ventas + inventario + CxC</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar SKUs y categorías de producto</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular margen por producto y categoría</div>
+          <div class="eff-task"><span class="et-n">T4</span> Ejecutar clasificación ABC del inventario</div>
+          <div class="eff-task"><span class="et-n">T5</span> Identificar capital frenado en inventario C</div>
+          <div class="eff-task"><span class="et-n">T6</span> Construir pestaña Ventas y Margen</div>
+          <div class="eff-task"><span class="et-n">T7</span> Construir pestaña Inventario y Stock</div>
+          <div class="eff-task"><span class="et-n">T8</span> Construir pestaña CxC (si aplica)</div>
+          <div class="eff-task"><span class="et-n">T9</span> Construir pestaña Comparativo Sucursales (si aplica)</div>
+          <div class="eff-task"><span class="et-n">T10</span> Activar alertas de stock crítico y mora</div>
+          <div class="eff-task"><span class="et-n">T11</span> Pruebas y entrega con capacitación</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Ferretería v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+<!-- ═══ COLEGIO ═══ -->
+<div class="lev-page" id="lev-page-colegio">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#4C1D95,#7C3AED)">
+      <div class="sector-badge">🏫 Sector Educación</div>
+      <h1>Levantamiento — Colegio / Academia Privada</h1>
+      <p>Para colegios privados, academias de idiomas, institutos técnicos y centros de formación</p>
+    </div>
+    <div class="fh-meta" style="background:#5B21B6">
+      <div class="mi"><span class="ml">Nombre del centro educativo</span><input placeholder="Colegio San Francisco"></div>
+      <div class="mi"><span class="ml">Número de alumnos matriculados</span><input placeholder="Ej: 320 alumnos"></div>
+      <div class="mi"><span class="ml">Niveles educativos</span><input placeholder="Ej: Parvularia, Básica, Bachillerato"></div>
+      <div class="mi"><span class="ml">Número de docentes</span><input placeholder="Ej: 18 docentes"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: GROWTH $199</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 7–9 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 4 días hábiles</span>
+        <span class="tag tag-navy">⚠️ Datos de alumnos solo con códigos</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#7C3AED">A</div><h2>Prerrequisitos</h2></div>
+    <div class="section-body">
+      <div class="disclaimer" style="margin-bottom:14px">
+        <strong>⚠️ PRIVACIDAD DE MENORES:</strong>
+        NUNCA procesar nombres completos ni DUI de alumnos. Usar código de alumno (Ej: A-2025-001). Los padres de familia tampoco deben incluirse con nombre. Solo códigos y grados.
+      </div>
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Lista de alumnos con estado de pago</div>
+            <div class="pi-desc">Excel: CÓDIGO alumno | Grado | Mensualidad asignada ($) | Estado de pago del mes (Al día / Mora 1 mes / Mora 2+ meses / Beca). NUNCA incluir nombre completo ni DUI.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — fuente principal del dashboard</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Ingresos del mes desglosados por concepto</div>
+            <div class="pi-desc">Excel: Concepto (mensualidades, matrícula, uniforme, material, transporte, otros) | Monto total cobrado por concepto. No necesita detalle por alumno.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para análisis de fuentes de ingreso</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Capacidad total vs matrícula actual</div>
+            <div class="pi-desc">Dato verbal del director: ¿Cuántos alumnos puede recibir cada grado (capacidad máxima)? ¿Cuántos están matriculados actualmente? Para calcular % de ocupación.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para KPI de ocupación</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Registro de asistencia (si existe)</div>
+            <div class="pi-desc">Excel: Grado | % de asistencia del mes (no por alumno individual). Si no llevan registro, se puede omitir este KPI.</div>
+            <div class="pi-req should">◈ RECOMENDADO — alerta temprana de deserción escolar</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Gastos del período</div>
+            <div class="pi-desc">Excel: Concepto | Monto (nómina docente, nómina administrativa, renta, servicios, materiales, mantenimiento). Para calcular rentabilidad por alumno.</div>
+            <div class="pi-req should">◈ RECOMENDADO — permite calcular costo por alumno y margen</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">6</div>
+          <div class="pi-info">
+            <div class="pi-title">Evaluaciones docentes (si existen)</div>
+            <div class="pi-desc">Escala 1–10 por encuesta a padres o resultado académico promedio del grado por docente. Solo si el director quiere incluir este KPI.</div>
+            <div class="pi-req nice">○ OPCIONAL — solo si existe sistema de evaluación formal</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#7C3AED">B</div><h2>KPIs a Incluir</h2></div>
+    <div class="section-body">
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Mora por grado</div><div class="kc-desc">% de alumnos con mora en cada nivel educativo</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ingresos del mes</div><div class="kc-desc">Total cobrado vs meta (mensualidades + otros conceptos)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ocupación vs capacidad</div><div class="kc-desc">% de matrícula actual vs capacidad máxima por grado</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Alumnos en mora crítica</div><div class="kc-desc">Número de alumnos con 2+ meses de mora acumulada</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Tasa de cobro del mes</div><div class="kc-desc">% de mensualidades cobradas vs total esperado</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ingresos vs gastos</div><div class="kc-desc">Comparativo mensual de ingresos totales vs egresos operativos</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">% Asistencia por grado</div><div class="kc-desc">Alerta temprana de deserción (requiere registro de asistencia)</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Costo por alumno</div><div class="kc-desc">Gasto operativo total / número de alumnos matriculados</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Rating docentes</div><div class="kc-desc">Evaluación promedio por docente (solo si existe sistema formal)</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#7C3AED">C</div><h2>Esfuerzo Estimado y Tareas</h2></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas — Colegio (Plan GROWTH)</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">0.5h</div><div class="el">Verificación de privacidad</div></div>
+          <div class="eff-item"><div class="ev">2.0h</div><div class="el">Limpieza y codificación</div></div>
+          <div class="eff-item"><div class="ev">4.5h</div><div class="el">Construcción del dashboard</div></div>
+          <div class="eff-item"><div class="ev">1.0h</div><div class="el">Ajustes y entrega</div></div>
+        </div>
+        <div class="effort-tasks">
+          <div class="eff-task"><span class="et-n">T1</span> Verificar que no hay datos personales de alumnos</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar grados, conceptos y estados de pago</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular mora por grado y acumulada</div>
+          <div class="eff-task"><span class="et-n">T4</span> Calcular % de cobro vs meta mensual</div>
+          <div class="eff-task"><span class="et-n">T5</span> Calcular ocupación actual vs capacidad</div>
+          <div class="eff-task"><span class="et-n">T6</span> Construir pestaña Cobranza y Mora</div>
+          <div class="eff-task"><span class="et-n">T7</span> Construir pestaña Ingresos vs Gastos</div>
+          <div class="eff-task"><span class="et-n">T8</span> Construir pestaña Ocupación y Matrícula</div>
+          <div class="eff-task"><span class="et-n">T9</span> Activar alertas de mora crítica</div>
+          <div class="eff-task"><span class="et-n">T10</span> Capacitación y entrega al director</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Colegio / Academia v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+<!-- ═══ TALLER AUTOMOTRIZ ═══ -->
+<div class="lev-page" id="lev-page-taller">
+  <div class="form-header">
+    <div class="fh-top" style="background:linear-gradient(135deg,#1F2937,#374151)">
+      <div class="sector-badge">🔩 Sector Taller Automotriz</div>
+      <h1>Levantamiento — Taller Mecánico / Automotriz</h1>
+      <p>Para talleres mecánicos, talleres de hojalatería y pintura, diagnóstico electrónico y servicios automotrices</p>
+    </div>
+    <div class="fh-meta" style="background:#374151">
+      <div class="mi"><span class="ml">Nombre del taller</span><input placeholder="Taller Rápido SV"></div>
+      <div class="mi"><span class="ml">Servicios principales</span><input placeholder="Mecánica general, transmisiones, AC..."></div>
+      <div class="mi"><span class="ml">Número de mecánicos</span><input placeholder="Ej: 4 mecánicos + 1 supervisor"></div>
+      <div class="mi"><span class="ml">Vehículos atendidos / mes (aprox.)</span><input placeholder="Ej: 80–100 vehículos"></div>
+    </div>
+    <div class="fh-bot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-green">Plan recomendado: STARTER $99 o GROWTH $199</span>
+        <span class="tag tag-amber">⏱ Esfuerzo: 5–7 horas</span>
+        <span class="tag tag-teal">⏲ Entrega: 2–4 días hábiles</span>
+        <span class="tag tag-navy">📊 Pestañas: 2–3</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#374151">A</div><h2>Prerrequisitos</h2></div>
+    <div class="section-body">
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <div class="pi-num">1</div>
+          <div class="pi-info">
+            <div class="pi-title">Registro de servicios del período</div>
+            <div class="pi-desc">Excel o cuaderno fotografiado: Fecha | Tipo de servicio | Costo de mano de obra | Costo de repuestos | Total cobrado | Mecánico responsable. Mínimo 1 mes.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — fuente principal</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">2</div>
+          <div class="pi-info">
+            <div class="pi-title">Lista de tipos de servicio con precio estándar</div>
+            <div class="pi-desc">Lista verbal o Excel: Servicio | Precio estándar de mano de obra | Tiempo promedio en horas. Ej: Cambio aceite $15 · 30 min. Diagnóstico electrónico $25 · 1 hr.</div>
+            <div class="pi-req must">⬛ OBLIGATORIO — para análisis de servicio más rentable</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">3</div>
+          <div class="pi-info">
+            <div class="pi-title">Registro por mecánico (si existe)</div>
+            <div class="pi-desc">Excel: Mecánico | Servicios realizados | Total generado | Tiempo productivo. Si no llevan control por mecánico, se construye solo el análisis general.</div>
+            <div class="pi-req should">◈ RECOMENDADO — permite ranking de productividad</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">4</div>
+          <div class="pi-info">
+            <div class="pi-title">Clientes con crédito o saldo pendiente (si aplica)</div>
+            <div class="pi-desc">Excel: Nombre del cliente | Monto pendiente | Fecha del servicio. Solo si manejan crédito o fichas de clientes frecuentes.</div>
+            <div class="pi-req nice">○ OPCIONAL — para talleres con cartera de clientes frecuentes</div>
+          </div>
+          <input type="checkbox">
+        </div>
+        <div class="prereq-item">
+          <div class="pi-num">5</div>
+          <div class="pi-info">
+            <div class="pi-title">Costos de repuestos (si llevan registro)</div>
+            <div class="pi-desc">Excel: Repuesto | Costo de compra | Precio de venta al cliente. Para calcular margen real del taller incluyendo repuestos.</div>
+            <div class="pi-req nice">○ OPCIONAL — enriquece el análisis de margen total</div>
+          </div>
+          <input type="checkbox">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#374151">B</div><h2>KPIs a Incluir</h2></div>
+    <div class="section-body">
+      <div class="kpi-grid">
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ingresos del mes</div><div class="kc-desc">Total facturado por mano de obra + repuestos</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Servicio más realizado</div><div class="kc-desc">Top 5 servicios por volumen de casos en el mes</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Servicio más rentable</div><div class="kc-desc">Top 5 servicios por ingreso generado</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox" checked><div class="kc-info"><div class="kc-name">Ticket promedio por vehículo</div><div class="kc-desc">Monto promedio cobrado por cada vehículo atendido</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Vehículos atendidos por día</div><div class="kc-desc">Tendencia diaria de productividad del taller</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ranking de mecánicos</div><div class="kc-desc">Servicios realizados y monto generado por mecánico</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Ratio mano de obra / repuestos</div><div class="kc-desc">% del ingreso que viene de mano de obra vs venta de repuestos</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Días de mayor movimiento</div><div class="kc-desc">Qué días de la semana concentran más trabajo</div></div></div>
+        <div class="lev-kpi-card"><input type="checkbox"><div class="kc-info"><div class="kc-name">Comparativo mensual</div><div class="kc-desc">Ingresos este mes vs mes anterior</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-hdr"><div class="sn" style="background:#374151">C</div><h2>Esfuerzo Estimado y Tareas</h2></div>
+    <div class="section-body">
+      <div class="effort-block">
+        <h3>⏱ Distribución de Horas — Taller (Plan STARTER/GROWTH)</h3>
+        <div class="effort-grid">
+          <div class="eff-item"><div class="ev">0.5h</div><div class="el">Recepción y diagnóstico</div></div>
+          <div class="eff-item"><div class="ev">1.5h</div><div class="el">Limpieza y normalización</div></div>
+          <div class="eff-item"><div class="ev">3.5h</div><div class="el">Construcción del dashboard</div></div>
+          <div class="eff-item"><div class="ev">0.5h</div><div class="el">Ajustes y entrega</div></div>
+        </div>
+        <div class="effort-tasks">
+          <div class="eff-task"><span class="et-n">T1</span> Recibir y revisar registros de servicios</div>
+          <div class="eff-task"><span class="et-n">T2</span> Normalizar tipos de servicio y mecánicos</div>
+          <div class="eff-task"><span class="et-n">T3</span> Calcular margen por tipo de servicio</div>
+          <div class="eff-task"><span class="et-n">T4</span> Construir pestaña Ingresos y Servicios</div>
+          <div class="eff-task"><span class="et-n">T5</span> Construir pestaña Equipo (si hay datos)</div>
+          <div class="eff-task"><span class="et-n">T6</span> Activar semáforos de KPIs críticos</div>
+          <div class="eff-task"><span class="et-n">T7</span> Video de capacitación y entrega final</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <div class="ff-brand">DataVisual <span>SV</span></div>
+    <div class="ff-info">Formulario Sector Taller Automotriz v2.0 · 2025<br>hola@datavisualsv.com · www.datavisualsv.com</div>
+  </div>
+</div>
+
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════ -->
+
+<!-- MODAL OPORTUNIDAD -->
+<div class="modal-overlay" id="modalOportunidad">
+<div class="modal">
+  <div class="modal-hdr">
+    <h3 id="oppModalTitle">🎯 Nueva Oportunidad</h3>
+    <button class="modal-close" onclick="closeModal('modalOportunidad')">✕</button>
+  </div>
+  <input type="hidden" id="oppEditId">
+  <div class="form-grid">
+    <div class="field"><label>Nombre del cliente <span class="req">*</span></label><input id="oppNombre" placeholder="Ej. El Rincón Familiar"></div>
+    <div class="field"><label>Contacto / Dueño</label><input id="oppContacto" placeholder="Nombre del dueño"></div>
+  </div>
+  <div class="form-grid three" style="margin-top:12px">
+    <div class="field"><label>Sector <span class="req">*</span></label>
+      <select id="oppSector"><option value="">Seleccionar</option><option>Restaurante</option><option>Distribuidora</option><option>Clínica / Salud</option><option>Ferretería</option><option>Colegio / Academia</option><option>Taller / Automotriz</option><option>Otro</option></select>
+    </div>
+    <div class="field"><label>Plan de interés</label>
+      <select id="oppPlan"><option>Starter $99</option><option>Growth $199</option><option>Pro $299</option><option>Sin definir</option></select>
+    </div>
+    <div class="field"><label>Etapa</label>
+      <select id="oppEtapa"><option>Prospecto</option><option>Demo</option><option>Propuesta</option><option>Negociación</option><option>Ganado</option><option>Perdido</option></select>
+    </div>
+  </div>
+  <div class="form-grid three" style="margin-top:12px">
+    <div class="field"><label>Valor estimado ($)</label><input id="oppValor" type="number" placeholder="199" min="0"></div>
+    <div class="field"><label>Probabilidad (%)</label><input id="oppProb" type="number" placeholder="50" min="0" max="100"></div>
+    <div class="field"><label>Fecha de seguimiento</label><input id="oppFecha" type="date"></div>
+  </div>
+  <div class="form-grid" style="margin-top:12px">
+    <div class="field"><label>Canal de origen</label>
+      <select id="oppCanal"><option>Referido</option><option>WhatsApp</option><option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>Networking</option><option>Otro</option></select>
+    </div>
+    <div class="field"><label>Ciudad</label><input id="oppCiudad" placeholder="San Salvador"></div>
+  </div>
+  <div class="field" style="margin-top:12px"><label>Notas / Observaciones</label><textarea id="oppNotas" placeholder="Qué necesita, dolor identificado, próximos pasos..."></textarea></div>
+  <div class="form-actions">
+    <button class="btn btn-primary" onclick="saveOportunidad()">💾 Guardar Oportunidad</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalOportunidad')">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL VENTA -->
+<div class="modal-overlay" id="modalVenta">
+<div class="modal">
+  <div class="modal-hdr">
+    <h3 id="ventaModalTitle">💰 Registrar Venta</h3>
+    <button class="modal-close" onclick="closeModal('modalVenta')">✕</button>
+  </div>
+  <input type="hidden" id="ventaEditId">
+  <div class="form-grid">
+    <div class="field"><label>Cliente <span class="req">*</span></label><input id="vNombre" placeholder="Nombre del negocio"></div>
+    <div class="field"><label>Fecha de venta <span class="req">*</span></label><input id="vFecha" type="date"></div>
+  </div>
+  <div class="form-grid three" style="margin-top:12px">
+    <div class="field"><label>Sector</label>
+      <select id="vSector"><option>Restaurante</option><option>Distribuidora</option><option>Clínica / Salud</option><option>Ferretería</option><option>Colegio / Academia</option><option>Taller / Automotriz</option><option>Otro</option></select>
+    </div>
+    <div class="field"><label>Plan vendido <span class="req">*</span></label>
+      <select id="vPlan" onchange="autoPrice()"><option value="99">Starter — $99</option><option value="199">Growth — $199</option><option value="299">Pro — $299</option><option value="0">Otro</option></select>
+    </div>
+    <div class="field"><label>Monto cobrado ($) <span class="req">*</span></label><input id="vMonto" type="number" placeholder="199" min="0"></div>
+  </div>
+  <div class="form-grid three" style="margin-top:12px">
+    <div class="field"><label>Estado de cobro</label>
+      <select id="vCobro"><option>Cobrado</option><option>Pendiente</option><option>Parcial</option></select>
+    </div>
+    <div class="field"><label>Canal de venta</label>
+      <select id="vCanal"><option>Referido</option><option>WhatsApp</option><option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>Networking</option><option>Otro</option></select>
+    </div>
+    <div class="field"><label>Incluye suscripción</label>
+      <select id="vIncSub"><option value="si">Sí — agregar suscripción</option><option value="no">No</option></select>
+    </div>
+  </div>
+  <div class="field" style="margin-top:12px"><label>Notas</label><textarea id="vNotas" placeholder="Datos entregados, fecha acordada de entrega, observaciones..."></textarea></div>
+  <div class="form-actions">
+    <button class="btn btn-primary" onclick="saveVenta()">💾 Registrar Venta</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalVenta')">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL SUSCRIPCIÓN -->
+<div class="modal-overlay" id="modalSuscripcion">
+<div class="modal">
+  <div class="modal-hdr">
+    <h3 id="subModalTitle">🔄 Nueva Suscripción</h3>
+    <button class="modal-close" onclick="closeModal('modalSuscripcion')">✕</button>
+  </div>
+  <input type="hidden" id="subEditId">
+  <div class="form-grid">
+    <div class="field"><label>Cliente <span class="req">*</span></label><input id="sNombre" placeholder="Nombre del negocio"></div>
+    <div class="field"><label>Plan de suscripción <span class="req">*</span></label>
+      <select id="sPlan" onchange="autoSubPrice()">
+        <option value="9.99">Básico — $9.99/mes</option>
+        <option value="19.99">Growth — $19.99/mes</option>
+        <option value="29.99">Pro — $29.99/mes</option>
+        <option value="0">Otro</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-grid three" style="margin-top:12px">
+    <div class="field"><label>Monto mensual ($)</label><input id="sMonto" type="number" placeholder="19.99" step="0.01"></div>
+    <div class="field"><label>Fecha de inicio</label><input id="sInicio" type="date"></div>
+    <div class="field"><label>Estado</label>
+      <select id="sEstado"><option>Activa</option><option>Pausada</option><option>Cancelada</option></select>
+    </div>
+  </div>
+  <div class="field" style="margin-top:12px"><label>Notas</label><textarea id="sNotas" placeholder="Observaciones sobre la suscripción..."></textarea></div>
+  <div class="form-actions">
+    <button class="btn btn-primary" onclick="saveSuscripcion()">💾 Guardar Suscripción</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalSuscripcion')">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL GASTO -->
+<div class="modal-overlay" id="modalGasto">
+<div class="modal">
+  <div class="modal-hdr">
+    <h3>📋 Registrar Gasto</h3>
+    <button class="modal-close" onclick="closeModal('modalGasto')">✕</button>
+  </div>
+  <input type="hidden" id="gastoEditId">
+  <div class="form-grid">
+    <div class="field"><label>Fecha <span class="req">*</span></label><input id="gFecha" type="date"></div>
+    <div class="field"><label>Categoría <span class="req">*</span></label>
+      <select id="gCategoria">
+        <option>Salario / Retiro fundador</option><option>Freelancer / Desarrollador</option>
+        <option>Marketing / Publicidad</option><option>Herramientas / Software</option>
+        <option>Hosting / Dominios</option><option>Constitución legal</option>
+        <option>Contador</option><option>Transporte / Movilidad</option>
+        <option>Papelería / Impresión</option><option>Otros</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-grid" style="margin-top:12px">
+    <div class="field"><label>Descripción</label><input id="gDescripcion" placeholder="Detalle del gasto"></div>
+    <div class="field"><label>Monto ($) <span class="req">*</span></label><input id="gMonto" type="number" placeholder="0.00" step="0.01" min="0"></div>
+  </div>
+  <div class="form-grid" style="margin-top:12px">
+    <div class="field"><label>Tiene factura / CCF</label>
+      <select id="gFactura"><option>Sí</option><option>No (efectivo / informal)</option></select>
+    </div>
+    <div class="field"><label>Proveedor</label><input id="gProveedor" placeholder="Nombre del proveedor"></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" onclick="saveGasto()">💾 Registrar Gasto</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalGasto')">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA LAYER — Supabase persistent storage (see <head> for async CRUD)
+// ══════════════════════════════════════════════════════════════
+// DB, loadDB, saveDB, uid and all CRUD functions are defined in the
+// Supabase integration block above (injected in <head>).
+
+
+// ══════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════
+const fmtUSD = n => '$'+parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtK   = n => n>=1000 ? '$'+(n/1000).toFixed(1)+'K' : '$'+n.toFixed(0);
+const nowYM  = () => new Date().toISOString().slice(0,7);
+const toYM   = d => d ? d.slice(0,7) : '';
+const monthLabel = ym => { const[y,m]=ym.split('-'); const names=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return names[parseInt(m)-1]+' '+y.slice(2); };
+const diffDays = (a,b) => Math.ceil((new Date(a)-new Date(b))/(1000*60*60*24));
+
+function last6Months(){
+  const months=[]; const d=new Date();
+  for(let i=5;i>=0;i--){ const t=new Date(d.getFullYear(),d.getMonth()-i,1); months.push(t.toISOString().slice(0,7)); }
+  return months;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CHART MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+const CHS={};
+function mkChart(id,cfg){
+  const el=document.getElementById(id); if(!el)return;
+  if(CHS[id])CHS[id].destroy();
+  CHS[id]=new Chart(el,{...cfg,options:{
+    ...cfg.options,
+    plugins:{...cfg.options?.plugins,legend:{...(cfg.options?.plugins?.legend||{}),labels:{color:'#4A5E7A',font:{size:10,family:'Geist Mono'},...(cfg.options?.plugins?.legend?.labels||{})}}},
+    scales:cfg.options?.scales?Object.fromEntries(Object.entries(cfg.options.scales).map(([k,v])=>([k,{...v,grid:{color:'rgba(208,217,236,.7)',...v.grid},ticks:{color:'#8298B5',font:{size:10,family:'Geist'},...v.ticks}}]))):{},
+  }});
+}
+const TC={teal:'rgba(8,145,178,.85)',tealA:'rgba(8,145,178,.15)',green:'rgba(5,150,105,.85)',greenA:'rgba(5,150,105,.15)',amber:'rgba(217,119,6,.85)',red:'rgba(225,29,72,.85)',blue:'rgba(79,111,191,.8)',purple:'rgba(124,58,237,.8)'};
+const SECTORS_COLORS=['#00B4CC','#00D084','#FFB547','#FF4D6D','#4D9EFF','#A78BFA','#F472B6'];
+
+// ══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  switch(id){
+    case 'dashboard': renderDashboard(); break;
+    case 'pipeline': renderPipeline(); break;
+    case 'ventas': renderVentas(); break;
+    case 'suscripciones': renderSuscripciones(); break;
+    case 'gastos': renderGastos(); break;
+    case 'reportes': renderReportes(); break;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); resetForm(id); }
+function resetForm(id){
+  const m=document.getElementById(id);
+  m.querySelectorAll('input[type=text],input[type=number],input[type=date],textarea').forEach(el=>el.value='');
+  m.querySelectorAll('select').forEach(el=>el.selectedIndex=0);
+  m.querySelectorAll('input[type=hidden]').forEach(el=>el.value='');
+}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeModal(o.id);}));
+
+function autoPrice(){ const m={'99':99,'199':199,'299':299,'0':0}; document.getElementById('vMonto').value=m[document.getElementById('vPlan').value]||''; }
+function autoSubPrice(){ document.getElementById('sMonto').value=document.getElementById('sPlan').value; }
+
+// Oportunidades CRUD → ver bloque Supabase en <head>
+
+// Ventas CRUD → ver bloque Supabase en <head>
+
+// Suscripciones CRUD → ver bloque Supabase en <head>
+
+// Gastos CRUD → ver bloque Supabase en <head>
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function buildMonthSelector(){
+  const sel=document.getElementById('dashMonth');
+  const months=[...new Set([...DB.ventas.map(v=>toYM(v.fecha)),...DB.gastos.map(g=>toYM(g.fecha))])].sort().reverse();
+  const cur=nowYM(); if(!months.includes(cur))months.unshift(cur);
+  sel.innerHTML=months.map(m=>`<option value="${m}"${m===cur?' selected':''}>${monthLabel(m)}</option>`).join('');
+}
+
+function renderDashboard(){
+  const selM=document.getElementById('dashMonth')?.value||nowYM();
+  const prevM=new Date(selM+'-01'); prevM.setMonth(prevM.getMonth()-1); const prevMStr=prevM.toISOString().slice(0,7);
+
+  // Current month data
+  const ventasMes=DB.ventas.filter(v=>toYM(v.fecha)===selM&&v.cobro==='Cobrado');
+  const ventasPrev=DB.ventas.filter(v=>toYM(v.fecha)===prevMStr&&v.cobro==='Cobrado');
+  const gasMes=DB.gastos.filter(g=>toYM(g.fecha)===selM);
+  const subActivas=DB.suscripciones.filter(s=>s.estado==='Activa');
+
+  const ingProyectos=ventasMes.reduce((a,v)=>a+v.monto,0);
+  const ingMRR=subActivas.reduce((a,s)=>a+parseFloat(s.monto),0);
+  const totalIngresos=ingProyectos+ingMRR;
+  const totalGastos=gasMes.reduce((a,g)=>a+g.monto,0);
+  const utilidad=totalIngresos-totalGastos;
+  const oppActivas=DB.oportunidades.filter(o=>!['Ganado','Perdido'].includes(o.etapa));
+  const ganadas=DB.oportunidades.filter(o=>o.etapa==='Ganado').length;
+  const totals=DB.oportunidades.filter(o=>['Ganado','Perdido'].includes(o.etapa)).length;
+  const tasa=totals>0?Math.round(ganadas/totals*100):0;
+
+  const ingPrev=ventasPrev.reduce((a,v)=>a+v.monto,0);
+  const trend=(prev,cur)=>prev===0?'+100%':((cur-prev)/prev*100).toFixed(0)+'%';
+  const trendClass=(prev,cur,inv=false)=>{if(cur>prev)return inv?'dn':'up';if(cur<prev)return inv?'up':'dn';return 'flat';};
+
+  // KPIs
+  document.getElementById('k-ingresos').textContent=fmtK(totalIngresos);
+  document.getElementById('k-ingresos-sub').textContent='Proyectos: '+fmtUSD(ingProyectos);
+  document.getElementById('k-ingresos-trend').textContent=(ingProyectos>ingPrev?'▲':'▼')+' '+trend(ingPrev,ingProyectos)+' vs mes ant.';
+  document.getElementById('k-ingresos-trend').className='kpi-trend '+trendClass(ingPrev,ingProyectos);
+
+  document.getElementById('k-utilidad').textContent=fmtK(utilidad);
+  document.getElementById('k-utilidad-sub').textContent='Margen: '+(totalIngresos>0?Math.round(utilidad/totalIngresos*100):0)+'%';
+  document.getElementById('k-utilidad-trend').textContent=utilidad>=0?'✓ Positiva':'⚠ Negativa';
+  document.getElementById('k-utilidad-trend').className='kpi-trend '+(utilidad>=0?'up':'dn');
+
+  document.getElementById('k-proyectos').textContent=ventasMes.length;
+  document.getElementById('k-proyectos-sub').textContent='Ticket prom: '+fmtUSD(ventasMes.length?ingProyectos/ventasMes.length:0);
+  document.getElementById('k-proyectos-trend').textContent=(ventasMes.length>ventasPrev.length?'▲':'▼')+' vs mes ant.';
+  document.getElementById('k-proyectos-trend').className='kpi-trend '+(ventasMes.length>=ventasPrev.length?'up':'dn');
+
+  document.getElementById('k-suscriptores').textContent=subActivas.length;
+  document.getElementById('k-suscriptores-sub').textContent='MRR: '+fmtUSD(ingMRR);
+  document.getElementById('k-suscriptores-trend').textContent='MRR mensual recurrente';
+  document.getElementById('k-suscriptores-trend').className='kpi-trend up';
+
+  document.getElementById('k-oportunidades').textContent=oppActivas.length;
+  const pipelineVal=oppActivas.reduce((a,o)=>a+(o.valor||0)*(o.prob||50)/100,0);
+  document.getElementById('k-oportunidades-sub').textContent='Pipeline ponderado: '+fmtUSD(pipelineVal);
+
+  document.getElementById('k-cierre').textContent=tasa+'%';
+  document.getElementById('k-cierre-sub').textContent=ganadas+' ganadas de '+totals+' cerradas';
+  document.getElementById('k-cierre-trend').textContent=tasa>=40?'✓ Buena tasa':'⚠ Mejorar';
+  document.getElementById('k-cierre-trend').className='kpi-trend '+(tasa>=40?'up':'dn');
+
+  // Alerts
+  const alerts=[]; 
+  const vencer=DB.suscripciones.filter(s=>{if(s.estado!=='Activa'||!s.inicio)return false; const next=new Date(s.inicio); next.setDate(next.getDate()+(Math.floor((new Date()-new Date(s.inicio))/(30*24*3600*1000))+1)*30); return diffDays(next,new Date())<=5;});
+  if(vencer.length) alerts.push({type:'amber',msg:`⏰ ${vencer.length} suscripción(es) por vencer en los próximos 5 días: ${vencer.map(s=>s.nombre).join(', ')}`});
+  if(utilidad<0) alerts.push({type:'red',msg:'⚠ Utilidad negativa este mes. Los gastos superan los ingresos por '+fmtUSD(Math.abs(utilidad))});
+  if(oppActivas.length===0) alerts.push({type:'teal',msg:'💡 No hay oportunidades activas en el pipeline. Es momento de prospectar nuevos clientes.'});
+  if(totalGastos>DB.presupuesto_mensual*1.1) alerts.push({type:'red',msg:'📋 Los gastos del mes superan el presupuesto en '+fmtUSD(totalGastos-DB.presupuesto_mensual)});
+  document.getElementById('dashAlerts').innerHTML=alerts.map(a=>`<div class="alert-bar alert-${a.type}">${a.msg}</div>`).join('');
+
+  // Charts
+  renderDashCharts(selM);
+
+  // Recent activity
+  const activities=[
+    ...DB.ventas.slice(0,5).map(v=>({fecha:v.fecha,tipo:'💰 Venta',cliente:v.nombre,desc:'Plan '+v.plan,monto:fmtUSD(v.monto)})),
+    ...DB.oportunidades.filter(o=>o.etapa!=='Ganado'&&o.etapa!=='Perdido').slice(0,3).map(o=>({fecha:o.fecha||new Date().toISOString().slice(0,10),tipo:'🎯 Oportunidad',cliente:o.nombre,desc:o.etapa,monto:fmtUSD(o.valor)})),
+    ...DB.suscripciones.filter(s=>s.estado==='Activa').slice(0,3).map(s=>({fecha:s.inicio||'',tipo:'🔄 Suscripción',cliente:s.nombre,desc:'Plan '+s.plan,monto:fmtUSD(s.monto)+'/mes'})),
+  ].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,10);
+  document.getElementById('tbodyReciente').innerHTML=activities.length?activities.map(a=>`<tr><td class="mono">${a.fecha}</td><td>${a.tipo}</td><td style="font-weight:600;color:var(--txt)">${a.cliente}</td><td>${a.desc}</td><td class="mono" style="color:var(--teal);font-weight:700">${a.monto}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">📊</div><p>Sin actividad registrada aún</p></div></td></tr>';
+}
+
+function renderDashCharts(selM){
+  const months=last6Months();
+  // Ingresos por mes
+  const ingData=months.map(m=>{
+    const vp=DB.ventas.filter(v=>toYM(v.fecha)===m&&v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0);
+    const sm=DB.suscripciones.filter(s=>s.estado==='Activa'||toYM(s.inicio)<=m).reduce((a,s)=>a+parseFloat(s.monto),0);
+    return {proj:vp,sub:sm};
+  });
+  requestAnimationFrame(()=>{
+    mkChart('chartIngresos',{type:'bar',data:{labels:months.map(monthLabel),datasets:[
+      {label:'Proyectos',data:ingData.map(d=>d.proj),backgroundColor:TC.teal,borderRadius:4,borderSkipped:false},
+      {label:'Suscripción',data:ingData.map(d=>d.sub),backgroundColor:TC.green,borderRadius:4,borderSkipped:false},
+    ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:false,grid:{display:false}},y:{stacked:false,ticks:{callback:v=>'$'+v}}}}});
+
+    // Mix chart
+    const ventasMes=DB.ventas.filter(v=>toYM(v.fecha)===selM&&v.cobro==='Cobrado');
+    const subActivas=DB.suscripciones.filter(s=>s.estado==='Activa');
+    const ingP=ventasMes.reduce((a,v)=>a+v.monto,0);
+    const ingS=subActivas.reduce((a,s)=>a+parseFloat(s.monto),0);
+    mkChart('chartMix',{type:'doughnut',data:{labels:['Proyectos','Suscripciones'],datasets:[{data:[ingP,ingS],backgroundColor:[TC.teal,TC.green],borderWidth:2,borderColor:'#111827',hoverOffset:4}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'65%'}});
+
+    // Pipeline
+    const stages=['Prospecto','Demo','Propuesta','Negociación','Negociación'];
+    const stageLabels=['Prospecto','Demo','Propuesta','Negociación'];
+    const stageCounts=stageLabels.map(s=>DB.oportunidades.filter(o=>o.etapa===s).length);
+    mkChart('chartPipeline',{type:'bar',data:{labels:stageLabels,datasets:[{label:'Oportunidades',data:stageCounts,backgroundColor:[TC.blue,TC.amber,TC.purple,TC.teal],borderRadius:6,borderSkipped:false}]},options:{responsive:true,plugins:{legend:{display:false}},indexAxis:'y',scales:{x:{grid:{display:false},ticks:{stepSize:1}},y:{grid:{display:false}}}}});
+
+    // Sectores
+    const sects=[...new Set(DB.ventas.map(v=>v.sector||'Otro'))];
+    const sectVals=sects.map(s=>DB.ventas.filter(v=>v.sector===s).reduce((a,v)=>a+v.monto,0));
+    mkChart('chartSectores',{type:'doughnut',data:{labels:sects,datasets:[{data:sectVals,backgroundColor:SECTORS_COLORS,borderWidth:2,borderColor:'#111827',hoverOffset:4}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'60%'}});
+
+    // Planes
+    const planes=['Starter','Growth','Pro','Otro'];
+    const planeVals=planes.map(p=>DB.ventas.filter(v=>v.plan===p).reduce((a,v)=>a+v.monto,0));
+    mkChart('chartPlanes',{type:'bar',data:{labels:planes,datasets:[{data:planeVals,backgroundColor:[TC.teal,TC.green,TC.amber,TC.blue],borderRadius:6,borderSkipped:false}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v}}}}});
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — PIPELINE
+// ══════════════════════════════════════════════════════════════
+function renderPipeline(){
+  const search=document.getElementById('searchOpp')?.value?.toLowerCase()||'';
+  const filterS=document.getElementById('filterStage')?.value||'';
+  let opps=DB.oportunidades;
+  if(search) opps=opps.filter(o=>o.nombre.toLowerCase().includes(search)||o.sector.toLowerCase().includes(search));
+  if(filterS) opps=opps.filter(o=>o.etapa===filterS);
+
+  const stages=['Prospecto','Demo','Propuesta','Negociación','Ganado'];
+  const stageColors={Prospecto:'var(--blue)',Demo:'var(--amber)',Propuesta:'var(--purple)',Negociación:'var(--teal)',Ganado:'var(--green)'};
+  
+  // Stats
+  const activas=DB.oportunidades.filter(o=>!['Ganado','Perdido'].includes(o.etapa));
+  const pipeVal=activas.reduce((a,o)=>a+(o.valor||0)*(o.prob||50)/100,0);
+  const ganadas=DB.oportunidades.filter(o=>o.etapa==='Ganado').length;
+  const perdidas=DB.oportunidades.filter(o=>o.etapa==='Perdido').length;
+  const tasa=ganadas+perdidas>0?Math.round(ganadas/(ganadas+perdidas)*100):0;
+  
+  document.getElementById('pipelineStats').innerHTML=`
+    <div class="card"><div class="card-hdr"><h3 style="color:var(--teal)">Pipeline Activo</h3></div>
+      <div class="kpi-val">${fmtUSD(pipeVal)}</div><div class="kpi-sub">${activas.length} oportunidades activas (ponderado)</div></div>
+    <div class="card"><div class="card-hdr"><h3 style="color:var(--green)">Tasa de Cierre</h3></div>
+      <div class="kpi-val">${tasa}%</div><div class="kpi-sub">${ganadas} ganadas · ${perdidas} perdidas</div></div>
+    <div class="card"><div class="card-hdr"><h3 style="color:var(--amber)">Valor Ganado (Total)</h3></div>
+      <div class="kpi-val">${fmtUSD(DB.oportunidades.filter(o=>o.etapa==='Ganado').reduce((a,o)=>a+(o.valor||0),0))}</div><div class="kpi-sub">proyectos cerrados histórico</div></div>`;
+
+  // Kanban
+  document.getElementById('pipelineKanban').innerHTML=stages.map(stage=>{
+    const cards=DB.oportunidades.filter(o=>o.etapa===stage);
+    return `<div class="pipe-col">
+      <div class="pipe-col-hdr">
+        <span class="ptitle" style="color:${stageColors[stage]}">${stage}</span>
+        <span class="pcount">${cards.length}</span>
+      </div>
+      ${cards.length?cards.map(o=>`<div class="pipe-card" onclick="editOportunidad('${o.id}')">
+        <div class="pname">${o.nombre}</div>
+        <div class="psector">${o.sector} · ${o.canal||''}</div>
+        <div class="pvalue">${fmtUSD(o.valor||0)} · ${o.prob||50}%</div>
+        <div class="pdays">${o.fecha||'Sin fecha'}</div>
+      </div>`).join(''):'<div style="color:var(--txt3);font-size:11px;text-align:center;padding:20px 0">Sin oportunidades</div>'}
+    </div>`;
+  }).join('');
+
+  // Table
+  document.getElementById('tbodyOpp').innerHTML=opps.length?opps.map(o=>`<tr>
+    <td style="font-weight:600;color:var(--txt)">${o.nombre}</td>
+    <td>${o.sector||'–'}</td><td>${o.plan||'–'}</td>
+    <td class="mono" style="color:var(--teal)">${fmtUSD(o.valor||0)}</td>
+    <td><span class="badge b-${(o.etapa||'prospecto').toLowerCase().replace('é','e').replace('ó','o')}">${o.etapa||'Prospecto'}</span></td>
+    <td class="mono">${o.prob||50}%</td>
+    <td class="mono">${o.fecha||'–'}</td>
+    <td style="max-width:180px;font-size:11px;color:var(--txt3)">${(o.notas||'').slice(0,60)}${o.notas?.length>60?'...':''}</td>
+    <td><div class="tbl-actions">
+      <button class="btn btn-secondary btn-sm" onclick="editOportunidad('${o.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteOportunidad('${o.id}')">🗑</button>
+    </div></td>
+  </tr>`).join(''):'<tr><td colspan="9"><div class="empty"><div class="ei">🎯</div><p>No hay oportunidades. Agrega la primera con el botón + Nueva Oportunidad</p></div></td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — VENTAS
+// ══════════════════════════════════════════════════════════════
+function renderVentas(){
+  // Populate month filter
+  const months=[...new Set(DB.ventas.map(v=>toYM(v.fecha)))].sort().reverse();
+  const fv=document.getElementById('filterVentaMes');
+  fv.innerHTML='<option value="">Todos los meses</option>'+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  const filterM=fv.value;
+  let ventas=DB.ventas;
+  if(filterM) ventas=ventas.filter(v=>toYM(v.fecha)===filterM);
+
+  // Charts
+  const months6=last6Months();
+  requestAnimationFrame(()=>{
+    const dataByMonth=months6.map(m=>DB.ventas.filter(v=>toYM(v.fecha)===m&&v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0));
+    mkChart('chartVentasMes',{type:'line',data:{labels:months6.map(monthLabel),datasets:[{label:'Ingresos proyectos',data:dataByMonth,borderColor:TC.teal,backgroundColor:TC.tealA,fill:true,tension:.4,pointRadius:4,pointBackgroundColor:TC.teal}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v}}}}});
+    
+    const planes=['Starter','Growth','Pro','Otro'];
+    mkChart('chartVentasPlan',{type:'doughnut',data:{labels:planes,datasets:[{data:planes.map(p=>DB.ventas.filter(v=>v.plan===p).length),backgroundColor:[TC.teal,TC.green,TC.amber,TC.blue],borderWidth:2,borderColor:'#111827',hoverOffset:4}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'60%'}});
+  });
+
+  const cobroBadge={Cobrado:'<span class="badge b-ganado">Cobrado</span>',Pendiente:'<span class="badge b-propuesta">Pendiente</span>',Parcial:'<span class="badge b-demo">Parcial</span>'};
+  document.getElementById('tbodyVentas').innerHTML=ventas.length?ventas.map(v=>`<tr>
+    <td class="mono">${v.fecha}</td>
+    <td style="font-weight:600;color:var(--txt)">${v.nombre}</td>
+    <td>${v.sector||'–'}</td><td>${v.plan}</td>
+    <td class="mono" style="color:var(--teal);font-weight:700">${fmtUSD(v.monto)}</td>
+    <td>${cobroBadge[v.cobro]||v.cobro}</td>
+    <td>${v.canal||'–'}</td>
+    <td style="font-size:11px;color:var(--txt3)">${(v.notas||'').slice(0,40)}</td>
+    <td><div class="tbl-actions">
+      <button class="btn btn-secondary btn-sm" onclick="editVenta('${v.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteVenta('${v.id}')">🗑</button>
+    </div></td>
+  </tr>`).join(''):'<tr><td colspan="9"><div class="empty"><div class="ei">💰</div><p>Sin ventas registradas. Registra tu primera venta!</p></div></td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — SUSCRIPCIONES
+// ══════════════════════════════════════════════════════════════
+function renderSuscripciones(){
+  const filterE=document.getElementById('filterSubEstado')?.value||'';
+  let subs=DB.suscripciones;
+  if(filterE) subs=subs.filter(s=>s.estado===filterE);
+
+  const activas=DB.suscripciones.filter(s=>s.estado==='Activa');
+  const canceladas=DB.suscripciones.filter(s=>s.estado==='Cancelada');
+  const mrr=activas.reduce((a,s)=>a+parseFloat(s.monto),0);
+  const churnRate=DB.suscripciones.length>0?Math.round(canceladas.length/DB.suscripciones.length*100):0;
+  
+  document.getElementById('k-mrr').textContent=fmtUSD(mrr);
+  document.getElementById('k-mrr-sub').textContent='ARR: '+fmtUSD(mrr*12);
+  document.getElementById('k-sa').textContent=activas.length;
+  document.getElementById('k-cancel').textContent=canceladas.length;
+  document.getElementById('k-churn-rate').textContent='churn: '+churnRate+'%';
+  
+  const today=new Date();
+  const vencer=activas.filter(s=>{
+    if(!s.inicio)return false;
+    const start=new Date(s.inicio); const diff=Math.floor((today-start)/(30*24*3600*1000));
+    const nextBill=new Date(s.inicio); nextBill.setDate(nextBill.getDate()+(diff+1)*30);
+    return diffDays(nextBill,today)<=5;
+  });
+  document.getElementById('k-vencer').textContent=vencer.length;
+
+  const months6=last6Months();
+  requestAnimationFrame(()=>{
+    mkChart('chartMRR',{type:'line',data:{labels:months6.map(monthLabel),datasets:[{label:'MRR',data:months6.map(m=>{
+      const a=DB.suscripciones.filter(s=>s.estado==='Activa'||(toYM(s.inicio)<=m)).reduce((a,s)=>a+parseFloat(s.monto),0);
+      return a;
+    }),borderColor:TC.green,backgroundColor:TC.greenA,fill:true,tension:.4,pointRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v.toFixed(0)}}}}});
+    
+    const planes=['Básico','Growth','Pro','Otro'];
+    mkChart('chartSubPlanes',{type:'doughnut',data:{labels:planes,datasets:[{data:planes.map(p=>activas.filter(s=>s.plan===p).length),backgroundColor:[TC.teal,TC.green,TC.amber,TC.blue],borderWidth:2,borderColor:'#111827',hoverOffset:4}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:'60%'}});
+  });
+
+  const estadoBadge={Activa:'<span class="badge b-ganado">Activa</span>',Cancelada:'<span class="badge b-perdido">Cancelada</span>',Pausada:'<span class="badge b-demo">Pausada</span>'};
+  document.getElementById('tbodySub').innerHTML=subs.length?subs.map(s=>{
+    const start=s.inicio?new Date(s.inicio):null;
+    const mesesActivo=start?Math.max(0,Math.floor((today-start)/(30*24*3600*1000))):0;
+    const totalFact=mesesActivo*parseFloat(s.monto);
+    return `<tr class="${s.estado==='Activa'?'highlight':''}">
+      <td style="font-weight:600;color:var(--txt)">${s.nombre}</td>
+      <td>${s.plan}</td>
+      <td class="mono" style="color:var(--teal);font-weight:700">${fmtUSD(s.monto)}</td>
+      <td class="mono">${s.inicio||'–'}</td>
+      <td class="mono">${s.inicio?new Date(new Date(s.inicio).setDate(new Date(s.inicio).getDate()+(mesesActivo+1)*30)).toISOString().slice(0,10):'–'}</td>
+      <td>${estadoBadge[s.estado]||s.estado}</td>
+      <td class="mono">${mesesActivo} meses</td>
+      <td class="mono" style="color:var(--green)">${fmtUSD(totalFact)}</td>
+      <td><div class="tbl-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editSuscripcion('${s.id}')">✏️</button>
+        ${s.estado==='Activa'?`<button class="btn btn-danger btn-sm" onclick="cancelSub('${s.id}')">⏹</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deleteSuscripcion('${s.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="9"><div class="empty"><div class="ei">🔄</div><p>Sin suscripciones. Se crean automáticamente al registrar una venta.</p></div></td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — GASTOS
+// ══════════════════════════════════════════════════════════════
+function renderGastos(){
+  const months=[...new Set(DB.gastos.map(g=>toYM(g.fecha)))].sort().reverse();
+  const fg=document.getElementById('filterGastoMes');
+  const curVal=fg.value;
+  fg.innerHTML='<option value="">Todos los meses</option>'+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if(curVal&&months.includes(curVal)) fg.value=curVal;
+  
+  const filterM=fg.value;
+  const selM=filterM||nowYM();
+  let gastos=DB.gastos;
+  if(filterM) gastos=gastos.filter(g=>toYM(g.fecha)===filterM);
+
+  const gastosMes=DB.gastos.filter(g=>toYM(g.fecha)===selM);
+  const totalGastosMes=gastosMes.reduce((a,g)=>a+g.monto,0);
+  const ingresosMes=DB.ventas.filter(v=>toYM(v.fecha)===selM&&v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0)+DB.suscripciones.filter(s=>s.estado==='Activa').reduce((a,s)=>a+parseFloat(s.monto),0);
+  const margen=ingresosMes>0?Math.round((ingresosMes-totalGastosMes)/ingresosMes*100):0;
+  const byCategoria={}; gastosMes.forEach(g=>{ byCategoria[g.categoria]=(byCategoria[g.categoria]||0)+g.monto; });
+  const mayorCat=Object.entries(byCategoria).sort((a,b)=>b[1]-a[1])[0];
+  
+  document.getElementById('k-gastos-mes').textContent=fmtUSD(totalGastosMes);
+  document.getElementById('k-gastos-sub').textContent=gastosMes.length+' registros este mes';
+  document.getElementById('k-margen').textContent=margen+'%';
+  document.getElementById('k-mayor-gasto').textContent=mayorCat?fmtUSD(mayorCat[1]):'$0';
+  document.getElementById('k-mayor-gasto-cat').textContent=mayorCat?mayorCat[0]:'–';
+  document.getElementById('k-vs-presupuesto').textContent=Math.round(totalGastosMes/DB.presupuesto_mensual*100)+'%';
+
+  const months6=last6Months();
+  const catColors=['#FF4D6D','#FFB547','#00B4CC','#00D084','#4D9EFF','#A78BFA','#F472B6','#34D399','#FB923C','#60A5FA'];
+  const categorias=[...new Set(DB.gastos.map(g=>g.categoria))];
+  requestAnimationFrame(()=>{
+    const catVals=categorias.map(c=>gastosMes.filter(g=>g.categoria===c).reduce((a,g)=>a+g.monto,0));
+    mkChart('chartGastosCat',{type:'doughnut',data:{labels:categorias,datasets:[{data:catVals,backgroundColor:catColors,borderWidth:2,borderColor:'#111827',hoverOffset:4}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:9,family:'Geist'}}}},cutout:'55%'}});
+    
+    const gasDataM=months6.map(m=>DB.gastos.filter(g=>toYM(g.fecha)===m).reduce((a,g)=>a+g.monto,0));
+    const ingDataM=months6.map(m=>DB.ventas.filter(v=>toYM(v.fecha)===m&&v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0)+DB.suscripciones.filter(s=>s.estado==='Activa').reduce((a,s)=>a+parseFloat(s.monto),0));
+    mkChart('chartGastosVsIngresos',{type:'line',data:{labels:months6.map(monthLabel),datasets:[
+      {label:'Ingresos',data:ingDataM,borderColor:TC.green,backgroundColor:TC.greenA,fill:false,tension:.4,pointRadius:4},
+      {label:'Gastos',data:gasDataM,borderColor:TC.red,backgroundColor:'rgba(255,77,109,.08)',fill:false,tension:.4,pointRadius:4,borderDash:[5,3]},
+    ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v}}}}});
+  });
+
+  document.getElementById('tbodyGastos').innerHTML=gastos.length?gastos.map(g=>`<tr>
+    <td class="mono">${g.fecha}</td>
+    <td><span style="font-size:10px;background:var(--surf2);padding:2px 7px;border-radius:10px;color:var(--txt2)">${g.categoria}</span></td>
+    <td style="color:var(--txt)">${g.descripcion||'–'}</td>
+    <td class="mono" style="color:var(--red);font-weight:700">${fmtUSD(g.monto)}</td>
+    <td>${g.factura==='Sí'?'<span class="badge b-ganado">CCF/Factura</span>':'<span class="badge b-perdido">Sin factura</span>'}</td>
+    <td><div class="tbl-actions">
+      <button class="btn btn-secondary btn-sm" onclick="editGasto('${g.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteGasto('${g.id}')">🗑</button>
+    </div></td>
+  </tr>`).join(''):'<tr><td colspan="6"><div class="empty"><div class="ei">📋</div><p>Sin gastos registrados</p></div></td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER — REPORTES
+// ══════════════════════════════════════════════════════════════
+function renderReportes(){
+  const months6=last6Months();
+  const totalIngresos=DB.ventas.filter(v=>v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0)+DB.suscripciones.filter(s=>s.estado==='Activa').reduce((a,s)=>a+parseFloat(s.monto),0)*6;
+  const metaAnual=DB.meta_anual;
+  const pct=Math.min(100,Math.round(totalIngresos/metaAnual*100));
+  
+  requestAnimationFrame(()=>{
+    // Proyección vs Meta
+    const ingPorMes=months6.map(m=>DB.ventas.filter(v=>toYM(v.fecha)===m&&v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0));
+    const metaPorMes=months6.map((_,i)=>Math.round(metaAnual/12*(i+1)));
+    const acumReal=ingPorMes.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+    mkChart('chartProyeccion',{type:'line',data:{labels:months6.map(monthLabel),datasets:[
+      {label:'Ingresos acumulados',data:acumReal,borderColor:TC.teal,backgroundColor:TC.tealA,fill:true,tension:.4,pointRadius:4,pointBackgroundColor:TC.teal},
+      {label:'Meta ($29,287)',data:metaPorMes,borderColor:TC.amber,borderDash:[5,3],tension:.4,pointRadius:0,borderWidth:1.5},
+    ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v.toLocaleString()}}}}});
+
+    // Funnel
+    const stages=['Prospecto','Demo','Propuesta','Negociación','Ganado'];
+    const counts=stages.map(s=>DB.oportunidades.filter(o=>o.etapa===s).length);
+    mkChart('chartFunnel',{type:'bar',data:{labels:stages,datasets:[{data:counts,backgroundColor:[TC.blue,TC.amber,TC.purple,TC.teal,TC.green],borderRadius:6,borderSkipped:false}]},options:{responsive:true,plugins:{legend:{display:false}},indexAxis:'y',scales:{x:{ticks:{stepSize:1},grid:{display:false}},y:{grid:{display:false}}}}});
+  });
+
+  // Resumen ejecutivo
+  const activas=DB.suscripciones.filter(s=>s.estado==='Activa');
+  const mrr=activas.reduce((a,s)=>a+parseFloat(s.monto),0);
+  const totalGastos=DB.gastos.reduce((a,g)=>a+g.monto,0);
+  const totalVentas=DB.ventas.filter(v=>v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0);
+  const utilidad=totalVentas+mrr*6-totalGastos;
+  document.getElementById('resumenEjecutivo').innerHTML=`
+    <div style="padding:16px;background:var(--surf2);border-radius:var(--r);border:1px solid var(--bdr)">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Meta Anual</div>
+      <div style="font-size:22px;font-weight:800;font-family:var(--font-head);color:var(--teal)">${pct}%</div>
+      <div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${pct}%;background:${pct>=70?TC.green:pct>=40?TC.amber:TC.red}"></div></div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:6px">${fmtUSD(totalVentas)} de ${fmtUSD(metaAnual)}</div>
+    </div>
+    <div style="padding:16px;background:var(--surf2);border-radius:var(--r);border:1px solid var(--bdr)">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Utilidad Estimada</div>
+      <div style="font-size:22px;font-weight:800;font-family:var(--font-head);color:${utilidad>=0?'var(--green)':'var(--red)'}">${fmtUSD(utilidad)}</div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:6px">Ingresos – Gastos registrados</div>
+    </div>
+    <div style="padding:16px;background:var(--surf2);border-radius:var(--r);border:1px solid var(--bdr)">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">MRR Proyectado Año</div>
+      <div style="font-size:22px;font-weight:800;font-family:var(--font-head);color:var(--purple)">${fmtUSD(mrr*12)}</div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:6px">${activas.length} suscriptores × ${fmtUSD(mrr/Math.max(1,activas.length))}/mes avg</div>
+    </div>`;
+
+  // Alertas y recomendaciones
+  const recs=[];
+  const ganadas=DB.oportunidades.filter(o=>o.etapa==='Ganado').length;
+  const todasCerradas=DB.oportunidades.filter(o=>['Ganado','Perdido'].includes(o.etapa)).length;
+  const tasa=todasCerradas>0?Math.round(ganadas/todasCerradas*100):0;
+  
+  if(tasa<40) recs.push({type:'amber',msg:'📉 Tu tasa de cierre es del '+tasa+'%. El objetivo es 40%+. Revisar el proceso de seguimiento de oportunidades.'});
+  if(activas.length<5) recs.push({type:'teal',msg:'💡 Tienes '+activas.length+' suscriptores activos. La meta del Mes 4 es 12 suscriptores para $210/mes de MRR.'});
+  if(mrr<200) recs.push({type:'amber',msg:'🔄 MRR actual: '+fmtUSD(mrr)+'. Para alcanzar el punto de equilibrio necesitas $100+ de MRR. Priorizar conversión a suscripción.'});
+  if(pct>=100) recs.push({type:'green',msg:'🎉 ¡Meta anual alcanzada! Considera subir el objetivo para el próximo período.'});
+  else if(pct>=70) recs.push({type:'green',msg:'✅ Buen progreso hacia la meta anual ('+pct+'%). Mantener el ritmo de proyectos.'});
+  if(DB.oportunidades.filter(o=>!['Ganado','Perdido'].includes(o.etapa)).length===0) recs.push({type:'red',msg:'🚨 Pipeline vacío. Agregar nuevas oportunidades esta semana para mantener el flujo de ingresos futuro.'});
+  if(recs.length===0) recs.push({type:'teal',msg:'✅ Todo se ve bien. El negocio está en buen camino. Sigue ingresando datos regularmente.'});
+  
+  document.getElementById('alertasRec').innerHTML=recs.map(r=>`<div class="alert-bar alert-${r.type}" style="margin-bottom:8px">${r.msg}</div>`).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  EXPORT / IMPORT / CLEAR
+// ══════════════════════════════════════════════════════════════
+function exportData(){
+  const data = JSON.stringify(DB, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = 'datavisualsv_datos_' + fecha + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportHTMLWithData(){
+  // Embed current data inside the HTML and download as self-contained file
+  const dataJSON = JSON.stringify(DB);
+  let html = document.documentElement.outerHTML;
+  // Replace the placeholder script tag with actual data
+  html = html.replace(
+    '<script id="__dv_data__"></scr'+'ipt>',
+    '<script id="__dv_data__">window.__DV_DATA__=' + JSON.stringify(dataJSON) + ';</scr'+'ipt>'
+  );
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = 'DataVisualSV_Dashboard_' + fecha + '.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!imported.oportunidades || !imported.ventas){
+        alert('Archivo no válido. Debe ser un export de DataVisual SV.');
+        return;
+      }
+      DB = {...DB, ...imported};
+      saveDB();
+      buildMonthSelector();
+      renderDashboard();
+      alert('✅ Datos importados correctamente. ' + 
+        imported.oportunidades.length + ' oportunidades, ' + 
+        imported.ventas.length + ' ventas, ' + 
+        imported.suscripciones.length + ' suscripciones.');
+    }catch(err){
+      alert('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// clearAllData → ver bloque Supabase en <head>
+
+// ══════════════════════════════════════════════════════════════
+//  INIT — Supabase version
+// ══════════════════════════════════════════════════════════════
+async function init(){
+  // Date badge
+  const now=new Date();
+  document.getElementById('dateBadge').textContent=now.toLocaleDateString('es-SV',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  // Today's date as default for forms
+  const today=now.toISOString().slice(0,10);
+  document.getElementById('vFecha').value=today;
+  document.getElementById('sInicio').value=today;
+  document.getElementById('gFecha').value=today;
+  // Load from Supabase
+  await loadDB();
+  // Build month selector
+  buildMonthSelector();
+  // First render
+  renderDashboard();
+  // Show welcome banner if no data
+  const hasData = DB.oportunidades.length > 0 || DB.ventas.length > 0;
+  document.getElementById('welcomeBanner').style.display = hasData ? 'none' : 'block';
+}
+init();
+
+
+// ══ LEVANTAMIENTO ══
+function showSector(id, btn){
+  document.querySelectorAll('#page-levantamiento .lev-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('lev-page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// KPI card toggle
+document.querySelectorAll('.lev-kpi-card input[type=checkbox]').forEach(cb=>{
+  cb.addEventListener('change',function(){
+    this.closest('.lev-kpi-card').classList.toggle('selected', this.checked);
+  });
+  if(cb.checked) cb.closest('.lev-kpi-card').classList.add('selected');
+});
+
+// Set today's date
+document.querySelectorAll('#page-levantamiento input[type=date]').forEach(el=>{
+  if(!el.value) el.value = new Date().toISOString().slice(0,10);
+});
+</script>
+</div><!-- /main-content -->
+</div><!-- /app-shell -->
+<script id="__dv_data__"></script>
+</body>
+</html>
