@@ -426,7 +426,7 @@ function showLoginError(msg) {
 
 async function doLogout() {
   await sb.auth.signOut();
-  DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], meta_anual:29287, presupuesto_mensual:1000 };
+  DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], meta_anual:29287, presupuesto_mensual:1000 };
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('logoutBtn').style.display = 'none';
@@ -465,7 +465,7 @@ async function checkSession() {
 // ══════════════════════════════════════════════════════════════
 //  DB LAYER — Supabase persistent storage
 // ══════════════════════════════════════════════════════════════
-let DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], meta_anual:29287, presupuesto_mensual:1000 };
+let DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], meta_anual:29287, presupuesto_mensual:1000 };
 let _dbLoading = false;
 
 function showLoading(msg) {
@@ -496,20 +496,23 @@ function showSaveError(msg) {
 async function loadDB() {
   showLoading('⟳ Cargando datos...');
   try {
-    const [opps, ventas, subs, gastos] = await Promise.all([
+    const [opps, ventas, subs, gastos, levs] = await Promise.all([
       sb.from('dvsv_oportunidades').select('*').order('created_at', { ascending: false }),
       sb.from('dvsv_ventas').select('*').order('fecha', { ascending: false }),
       sb.from('dvsv_suscripciones').select('*').order('created_at', { ascending: false }),
       sb.from('dvsv_gastos').select('*').order('fecha', { ascending: false }),
+      sb.from('dvsv_levantamientos').select('*').order('created_at', { ascending: false }),
     ]);
     if (opps.error) throw opps.error;
     if (ventas.error) throw ventas.error;
     if (subs.error) throw subs.error;
     if (gastos.error) throw gastos.error;
+    // levantamientos: tolerar si la tabla aún no existe
     DB.oportunidades = opps.data || [];
     DB.ventas = ventas.data || [];
     DB.suscripciones = subs.data || [];
     DB.gastos = gastos.data || [];
+    DB.levantamientos = (levs && !levs.error) ? levs.data : [];
     hideLoading();
   } catch(e) {
     console.error('Supabase loadDB error:', e);
@@ -793,8 +796,9 @@ async function clearAllData() {
       sb.from('dvsv_ventas').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       sb.from('dvsv_suscripciones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       sb.from('dvsv_gastos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      sb.from('dvsv_levantamientos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ]);
-    DB = { oportunidades: [], ventas: [], suscripciones: [], gastos: [], meta_anual: 29287, presupuesto_mensual: 1000 };
+    DB = { oportunidades: [], ventas: [], suscripciones: [], gastos: [], levantamientos: [], meta_anual: 29287, presupuesto_mensual: 1000 };
     saveDB(); buildMonthSelector(); renderDashboard();
     alert('✅ Todos los datos borrados de Supabase.');
   } catch(e) { console.error(e); showSaveError('Error al borrar datos'); }
@@ -1215,10 +1219,10 @@ async function clearAllData() {
       <p>Completar en la primera reunión con el cliente — duración 30–45 minutos — aplica a TODOS los sectores</p>
     </div>
     <div class="fh-meta" style="background:#1B3A5C">
-      <div class="mi"><span class="ml">Nombre del negocio</span><input placeholder="El Rincón Familiar, S.A."></div>
-      <div class="mi"><span class="ml">Nombre del dueño / contacto</span><input placeholder="Lic. María González"></div>
-      <div class="mi"><span class="ml">Fecha de levantamiento</span><input type="date"></div>
-      <div class="mi"><span class="ml">Ejecutivo DataVisual SV</span><input placeholder="Tu nombre"></div>
+      <div class="mi"><span class="ml">Nombre del negocio</span><input id="levNegocio" placeholder="El Rincón Familiar, S.A."></div>
+      <div class="mi"><span class="ml">Nombre del dueño / contacto</span><input id="levContacto" placeholder="Lic. María González"></div>
+      <div class="mi"><span class="ml">Fecha de levantamiento</span><input id="levFecha" type="date"></div>
+      <div class="mi"><span class="ml">Ejecutivo DataVisual SV</span><input id="levEjecutivo" placeholder="Tu nombre"></div>
     </div>
     <div class="fh-bot">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1239,19 +1243,19 @@ async function clearAllData() {
     </div>
     <div class="section-body">
       <div class="field-grid">
-        <div class="field"><label>Nombre del negocio <span class="req">*</span></label><input placeholder="Nombre legal o comercial"></div>
+        <div class="field"><label>Nombre del negocio <span class="req">*</span></label><input id="levNombreNegocio" placeholder="Nombre legal o comercial"></div>
         <div class="field"><label>Sector / Giro <span class="req">*</span></label>
-          <select><option value="">Seleccionar</option><option>Restaurante / Food Service</option><option>Distribuidora / Mayorista</option><option>Clínica / Salud privada</option><option>Ferretería / Construcción</option><option>Colegio / Academia</option><option>Taller Automotriz</option><option>Agencia de viajes</option><option>Otro</option></select>
+          <select id="levSector"><option value="">Seleccionar</option><option>Restaurante / Food Service</option><option>Distribuidora / Mayorista</option><option>Clínica / Salud privada</option><option>Ferretería / Construcción</option><option>Colegio / Academia</option><option>Taller Automotriz</option><option>Agencia de viajes</option><option>Otro</option></select>
         </div>
-        <div class="field"><label>Ciudad / Municipio</label><input placeholder="San Salvador"></div>
+        <div class="field"><label>Ciudad / Municipio</label><input id="levCiudad" placeholder="San Salvador"></div>
         <div class="field"><label>Años en operación <span class="req">*</span></label>
-          <select><option>Menos de 1 año</option><option>1–2 años</option><option>3–5 años</option><option>6–10 años</option><option>Más de 10 años</option></select>
+          <select id="levAnios"><option>Menos de 1 año</option><option>1–2 años</option><option>3–5 años</option><option>6–10 años</option><option>Más de 10 años</option></select>
         </div>
         <div class="field"><label>Número de empleados <span class="req">*</span></label>
-          <select><option>1–5</option><option>6–15</option><option>16–30</option><option>31–60</option><option>Más de 60</option></select>
+          <select id="levEmpleados"><option>1–5</option><option>6–15</option><option>16–30</option><option>31–60</option><option>Más de 60</option></select>
         </div>
         <div class="field"><label>Ventas mensuales aproximadas</label>
-          <select><option>Menos de $5,000</option><option>$5,000–$15,000</option><option>$15,000–$35,000</option><option>$35,000–$75,000</option><option>Más de $75,000</option></select>
+          <select id="levVentasMes"><option>Menos de $5,000</option><option>$5,000–$15,000</option><option>$15,000–$35,000</option><option>$35,000–$75,000</option><option>Más de $75,000</option></select>
         </div>
       </div>
     </div>
@@ -1322,26 +1326,26 @@ async function clearAllData() {
     <div class="section-body">
       <div class="field-grid three">
         <div class="field"><label>Plan seleccionado <span class="req">*</span></label>
-          <select><option>STARTER — $99</option><option>GROWTH — $199</option><option>PRO — $299</option></select>
+          <select id="levPlan"><option>STARTER — $99</option><option>GROWTH — $199</option><option>PRO — $299</option></select>
         </div>
         <div class="field"><label>Modalidad de entrega</label>
-          <select><option>LOCAL (archivo HTML en PC)</option><option>WEB BÁSICO (URL Netlify)</option><option>WEB PREMIUM (dominio propio)</option></select>
+          <select id="levModalidad"><option>LOCAL (archivo HTML en PC)</option><option>WEB BÁSICO (URL Netlify)</option><option>WEB PREMIUM (dominio propio)</option></select>
         </div>
         <div class="field"><label>Plan de mantenimiento</label>
-          <select><option>Sin mantenimiento</option><option>Básico — $9.99/mes</option><option>Growth — $19.99/mes</option><option>Pro — $29.99/mes</option></select>
+          <select id="levMantenimiento"><option>Sin mantenimiento</option><option>Básico — $9.99/mes</option><option>Growth — $19.99/mes</option><option>Pro — $29.99/mes</option></select>
         </div>
       </div>
       <div class="field-grid" style="margin-top:12px">
         <div class="field"><label>¿Tienen logo corporativo?</label>
-          <select><option>Sí — PNG o JPG disponible</option><option>Sí — pero en formato incorrecto</option><option>No tenemos logo</option></select>
+          <select id="levLogo"><option>Sí — PNG o JPG disponible</option><option>Sí — pero en formato incorrecto</option><option>No tenemos logo</option></select>
         </div>
         <div class="field"><label>¿Tienen colores corporativos definidos?</label>
-          <select><option>Sí — tenemos manual de marca</option><option>Sí — los conocemos de memoria</option><option>No — usar criterio DataVisual SV</option></select>
+          <select id="levColores"><option>Sí — tenemos manual de marca</option><option>Sí — los conocemos de memoria</option><option>No — usar criterio DataVisual SV</option></select>
         </div>
       </div>
       <div class="field-grid one" style="margin-top:12px">
         <div class="field"><label>Notas adicionales / Expectativas especiales</label>
-          <textarea placeholder="¿Hay algo específico que el cliente mencionó como muy importante? ¿Comparaciones, alertas especiales, datos históricos?"></textarea>
+          <textarea id="levNotas" placeholder="¿Hay algo específico que el cliente mencionó como muy importante? ¿Comparaciones, alertas especiales, datos históricos?"></textarea>
         </div>
       </div>
     </div>
@@ -1411,6 +1415,15 @@ async function clearAllData() {
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- BOTÓN GUARDAR -->
+  <input type="hidden" id="levEditId">
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;margin-bottom:8px">
+    <button class="btn btn-secondary" onclick="clearLevantamiento()" type="button">🗑 Limpiar formulario</button>
+    <button class="btn btn-primary" style="font-size:14px;padding:11px 28px" onclick="saveLevantamiento()" type="button">
+      💾 Guardar Levantamiento → Crear Oportunidad
+    </button>
   </div>
 
   <div class="form-footer">
@@ -2285,7 +2298,7 @@ async function clearAllData() {
   </div>
   <div class="form-grid" style="margin-top:12px">
     <div class="field"><label>Canal de origen</label>
-      <select id="oppCanal"><option>Referido</option><option>WhatsApp</option><option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>Networking</option><option>Otro</option></select>
+      <select id="oppCanal"><option>Referido</option><option>WhatsApp</option><option>Instagram</option><option>Facebook</option><option>LinkedIn</option><option>Networking</option><option>Levantamiento</option><option>Otro</option></select>
     </div>
     <div class="field"><label>Ciudad</label><input id="oppCiudad" placeholder="San Salvador"></div>
   </div>
@@ -2651,7 +2664,7 @@ function renderPipeline(){
         <span class="pcount">${cards.length}</span>
       </div>
       ${cards.length?cards.map(o=>`<div class="pipe-card" onclick="editOportunidad('${o.id}')">
-        <div class="pname">${o.nombre}</div>
+        <div class="pname">${o.nombre}${o.levantamiento_id?` <span style="font-size:9px;background:rgba(8,145,178,.15);color:var(--teal);border-radius:4px;padding:1px 5px;font-weight:700">📋 Lev.</span>`  :''}</div>
         <div class="psector">${o.sector} · ${o.canal||''}</div>
         <div class="pvalue">${fmtUSD(o.valor||0)} · ${o.prob||50}%</div>
         <div class="pdays">${o.fecha||'Sin fecha'}</div>
@@ -2661,7 +2674,7 @@ function renderPipeline(){
 
   // Table
   document.getElementById('tbodyOpp').innerHTML=opps.length?opps.map(o=>`<tr>
-    <td style="font-weight:600;color:var(--txt)">${o.nombre}</td>
+    <td style="font-weight:600;color:var(--txt)">${o.nombre}${o.levantamiento_id?` <span style="font-size:9px;background:rgba(8,145,178,.15);color:var(--teal);border-radius:4px;padding:1px 5px;font-weight:700">📋 Lev.</span>`:''}</td>
     <td>${o.sector||'–'}</td><td>${o.plan||'–'}</td>
     <td class="mono" style="color:var(--teal)">${fmtUSD(o.valor||0)}</td>
     <td><span class="badge b-${(o.etapa||'prospecto').toLowerCase().replace('é','e').replace('ó','o')}">${o.etapa||'Prospecto'}</span></td>
@@ -2961,6 +2974,156 @@ function importData(event){
 }
 
 // clearAllData → ver bloque Supabase en <head>
+
+// ══════════════════════════════════════════════════════════════
+//  LEVANTAMIENTO — Supabase CRUD + Auto-crear Oportunidad
+// ══════════════════════════════════════════════════════════════
+
+// Mapeo de plan a valor estimado de oportunidad
+function levPlanToValor(planStr) {
+  if (planStr.includes('99'))  return 99;
+  if (planStr.includes('199')) return 199;
+  if (planStr.includes('299')) return 299;
+  return 99;
+}
+
+// Mapeo de sector levantamiento → sector pipeline
+function levSectorToPipeline(sector) {
+  const map = {
+    'Restaurante / Food Service': 'Restaurante',
+    'Distribuidora / Mayorista':  'Distribuidora',
+    'Clínica / Salud privada':    'Clínica',
+    'Ferretería / Construcción':  'Ferretería',
+    'Colegio / Academia':         'Educación',
+    'Taller Automotriz':          'Automotriz',
+    'Agencia de viajes':          'Turismo',
+    'Otro':                       'Otro',
+  };
+  return map[sector] || 'Otro';
+}
+
+async function saveLevantamiento() {
+  // ── Validación mínima ──
+  const nombre   = (document.getElementById('levNombreNegocio').value || document.getElementById('levNegocio').value).trim();
+  const contacto = document.getElementById('levContacto').value.trim();
+  const sector   = document.getElementById('levSector').value;
+  const ciudad   = document.getElementById('levCiudad').value.trim();
+  const fecha    = document.getElementById('levFecha').value || new Date().toISOString().slice(0,10);
+  const plan     = document.getElementById('levPlan').value;
+  const notas    = document.getElementById('levNotas').value.trim();
+  const ejecutivo = document.getElementById('levEjecutivo').value.trim();
+  const editId   = document.getElementById('levEditId').value;
+
+  if (!nombre) { alert('El nombre del negocio es requerido para guardar el levantamiento.'); return; }
+  if (!sector)  { alert('Selecciona el Sector / Giro del negocio.'); return; }
+
+  const levObj = {
+    nombre_negocio: nombre,
+    contacto,
+    sector,
+    ciudad,
+    fecha,
+    plan,
+    modalidad:     document.getElementById('levModalidad').value,
+    mantenimiento: document.getElementById('levMantenimiento').value,
+    logo:          document.getElementById('levLogo').value,
+    colores:       document.getElementById('levColores').value,
+    anios_op:      document.getElementById('levAnios').value,
+    empleados:     document.getElementById('levEmpleados').value,
+    ventas_mes:    document.getElementById('levVentasMes').value,
+    ejecutivo,
+    notas,
+  };
+
+  showLoading('Guardando levantamiento...');
+
+  try {
+    let levId = editId;
+
+    if (editId) {
+      // ── Actualizar levantamiento existente ──
+      const { error } = await sb.from('dvsv_levantamientos').update(levObj).eq('id', editId);
+      if (error) throw error;
+    } else {
+      // ── Insertar nuevo levantamiento ──
+      const { data, error } = await sb.from('dvsv_levantamientos').insert([levObj]).select();
+      if (error) throw error;
+      levId = data[0].id;
+      document.getElementById('levEditId').value = levId;
+    }
+
+    // ── Auto-crear / actualizar oportunidad en Pipeline ──
+    const valor = levPlanToValor(plan);
+    const sectorPipeline = levSectorToPipeline(sector);
+    const notasOpp = `[Levantamiento #${levId}] ${ejecutivo ? 'Ejecutivo: ' + ejecutivo + '. ' : ''}${notas}`.trim();
+
+    if (editId) {
+      // Si es edición, actualizar la oportunidad vinculada (si existe)
+      const oppExistente = DB.oportunidades.find(o => o.levantamiento_id === editId);
+      if (oppExistente) {
+        const updObj = {
+          nombre: nombre, contacto, sector: sectorPipeline,
+          ciudad, valor, notas: notasOpp,
+          plan: plan.split('—')[0].trim(),
+        };
+        await sb.from('dvsv_oportunidades').update(updObj).eq('id', oppExistente.id);
+        Object.assign(oppExistente, updObj);
+      }
+    } else {
+      // ── Crear nueva oportunidad en etapa Prospecto ──
+      const oppObj = {
+        nombre,
+        contacto,
+        sector:    sectorPipeline,
+        plan:      plan.split('—')[0].trim(),   // "STARTER", "GROWTH" o "PRO"
+        valor,
+        prob:      20,                           // probabilidad inicial de un prospecto
+        etapa:     'Prospecto',
+        canal:     'Levantamiento',
+        ciudad,
+        fecha,
+        notas:     notasOpp,
+        levantamiento_id: levId,                 // vínculo para ediciones futuras
+      };
+      const { data: od, error: oe } = await sb.from('dvsv_oportunidades').insert([oppObj]).select();
+      if (oe) throw oe;
+      DB.oportunidades.unshift(od[0]);
+      document.getElementById('welcomeBanner').style.display = 'none';
+    }
+
+    hideLoading();
+    saveDB();
+
+    // Confirmar al usuario con opción de ir al Pipeline
+    const irPipeline = confirm(
+      '✅ Levantamiento guardado correctamente.\n\n' +
+      '🎯 Se creó la oportunidad "' + nombre + '" en el Pipeline (etapa: Prospecto).\n\n' +
+      '¿Deseas ir al Pipeline CRM ahora para verla?'
+    );
+    if (irPipeline) {
+      showPage('pipeline', document.querySelectorAll('.nav-btn')[1]);
+      renderPipeline();
+    }
+
+  } catch(e) {
+    console.error('saveLevantamiento error:', e);
+    showSaveError('Error al guardar: ' + (e.message || e.code || 'desconocido'));
+  }
+}
+
+function clearLevantamiento() {
+  if (!confirm('¿Limpiar todos los campos del formulario?')) return;
+  ['levNegocio','levContacto','levFecha','levEjecutivo',
+   'levNombreNegocio','levCiudad','levNotas','levEditId'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['levSector','levAnios','levEmpleados','levVentasMes',
+   'levPlan','levModalidad','levMantenimiento','levLogo','levColores'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+}
 
 // ══════════════════════════════════════════════════════════════
 //  INIT — Supabase Auth version
