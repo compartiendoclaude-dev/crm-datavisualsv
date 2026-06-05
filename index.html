@@ -386,6 +386,60 @@ canvas{max-height:220px}
 
 @media print { .lev-page { display:block!important; padding:10px; } .lev-nav { display:none; } body { background:#fff; } }
 
+/* ══ REPORTES PREDEFINIDOS ══ */
+.rpt-type-btn,.rpt-per-btn{
+  padding:6px 13px;font-size:11px;font-weight:600;cursor:pointer;
+  border:none;background:var(--surf2);color:var(--txt3);
+  font-family:var(--font-body);transition:.15s;
+}
+.rpt-type-btn:hover,.rpt-per-btn:hover{background:var(--surf3);color:var(--txt)}
+.rpt-type-btn.active{background:var(--teal);color:#fff}
+.rpt-per-btn.active{background:var(--teal);color:#fff}
+
+/* ══ PDF PRINT — solo muestra el reporte ══ */
+@media print {
+  /* Ocultar todo el shell */
+  .sidebar,.login-box,#loginScreen,.nav,
+  .sec-hdr,.g2,.g3,.g4,.kpi-strip,
+  #rpt-card .card-hdr button,
+  #rpt-card > .card-hdr > div:last-child,
+  #rpt-card .card-hdr .rpt-type-btn,
+  #rpt-card .card-hdr .rpt-per-btn { display:none!important }
+
+  body,html{ background:#fff!important; margin:0; padding:0 }
+  .app-shell{ display:block!important }
+  .main-content{ margin-left:0!important }
+  .page{ display:none!important; padding:0!important }
+  #page-reportes{ display:block!important }
+
+  /* Solo mostrar card del reporte */
+  #page-reportes > *:not(#rpt-card){ display:none!important }
+  #rpt-card{
+    border:none!important; box-shadow:none!important;
+    padding:0!important; margin:0!important;
+  }
+  #rpt-card .card-hdr{ border-bottom:1px solid #ddd!important; margin-bottom:12px; padding-bottom:10px }
+  #rpt-card h3{ font-size:16px!important; color:#000!important }
+  #rpt-empty{ display:none!important }
+  #rpt-result{ display:block!important }
+
+  /* Encabezado del PDF */
+  #rpt-card::before{
+    content: attr(data-pdf-title);
+    display:block; font-size:20px; font-weight:800;
+    color:#0E2038; margin-bottom:4px;
+  }
+  #rpt-card::after{
+    content: attr(data-pdf-sub);
+    display:block; font-size:11px; color:#64748B; margin-bottom:16px;
+  }
+
+  canvas{ max-height:200px!important }
+  .tbl th{ background:#0E2038!important; color:#fff!important; -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  .tbl tr:nth-child(even) td{ background:#F4F6FB!important; -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  #rptExportBtn{ display:none!important }
+}
+
 </style>
 
 <!-- ════════ SUPABASE CDN ════════ -->
@@ -1233,7 +1287,7 @@ async function clearAllData() {
 ═══════════════════════════════════════════════ -->
 <div class="page" id="page-reportes">
   <div class="sec-hdr">
-    <div><h2>Reportes y Análisis</h2><p>Proyecciones y análisis de rendimiento</p></div>
+    <div><h2>Reportes y Análisis</h2><p>Proyecciones, análisis de rendimiento y reportes predefinidos</p></div>
   </div>
 
   <div class="g2" style="margin-bottom:14px">
@@ -1248,13 +1302,66 @@ async function clearAllData() {
   </div>
 
   <div class="card" style="margin-bottom:14px">
-    <div class="card-hdr"><h3>📊 Resumen Ejecutivo Mensual</h3></div>
+    <div class="card-hdr"><h3>📊 Resumen Ejecutivo</h3></div>
     <div id="resumenEjecutivo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-top:4px"></div>
   </div>
 
-  <div class="card">
+  <div class="card" style="margin-bottom:14px">
     <div class="card-hdr"><h3>⚠️ Alertas y Recomendaciones</h3></div>
     <div id="alertasRec"></div>
+  </div>
+
+  <!-- ══ REPORTES PREDEFINIDOS ══ -->
+  <div class="card" id="rpt-card">
+    <div class="card-hdr" style="flex-wrap:wrap;gap:10px">
+      <h3>📋 Reportes Predefinidos</h3>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <!-- Tipo -->
+        <div style="display:flex;border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden">
+          <button id="rbt-lev" class="rpt-type-btn active" onclick="setRptType('lev',this)">📋 Levantamientos</button>
+          <button id="rbt-opp" class="rpt-type-btn" onclick="setRptType('opp',this)">🎯 Oportunidades</button>
+          <button id="rbt-ven" class="rpt-type-btn" onclick="setRptType('ven',this)">💰 Ventas</button>
+        </div>
+        <!-- Periodicidad -->
+        <div style="display:flex;border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden">
+          <button id="rbt-day"  class="rpt-per-btn" onclick="setRptPer('day',this)">Diario</button>
+          <button id="rbt-week" class="rpt-per-btn" onclick="setRptPer('week',this)">Semanal</button>
+          <button id="rbt-mon"  class="rpt-per-btn active" onclick="setRptPer('mon',this)">Mensual</button>
+        </div>
+        <!-- Rango -->
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="date" id="rptDesde" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 9px;font-size:12px;color:var(--txt);font-family:var(--font-body)">
+          <span style="font-size:11px;color:var(--txt3)">—</span>
+          <input type="date" id="rptHasta" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 9px;font-size:12px;color:var(--txt);font-family:var(--font-body)">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="generarReportePredefinido()" style="white-space:nowrap">⚙ Generar</button>
+        <button class="btn btn-secondary btn-sm" id="rptExportBtn" onclick="exportarReportePDF()" style="display:none;white-space:nowrap">⬇ Exportar PDF</button>
+      </div>
+    </div>
+
+    <!-- Resultado del reporte -->
+    <div id="rpt-result" style="display:none;margin-top:4px">
+      <!-- KPIs de resumen -->
+      <div id="rpt-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+      <!-- Gráfica -->
+      <div style="margin-bottom:16px">
+        <div class="chart-wrap" style="max-height:260px">
+          <canvas id="chartRpt" style="max-height:260px"></canvas>
+        </div>
+      </div>
+      <!-- Tabla detalle -->
+      <div class="tbl-wrap">
+        <table class="tbl" id="tblRpt">
+          <thead id="tblRptHead"></thead>
+          <tbody id="tblRptBody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:10px;text-align:right" id="rpt-footer-note"></div>
+    </div>
+    <div id="rpt-empty" style="padding:28px;text-align:center;color:var(--txt3)">
+      <div style="font-size:28px;margin-bottom:8px">📋</div>
+      <div style="font-size:13px">Selecciona tipo, periodicidad y rango de fechas, luego presiona <strong>Generar</strong>.</div>
+    </div>
   </div>
 </div>
 
@@ -2551,7 +2658,7 @@ function showPage(id,btn){
     case 'ventas': renderVentas(); break;
     case 'suscripciones': renderSuscripciones(); break;
     case 'gastos': renderGastos(); break;
-    case 'reportes': renderReportes(); break;
+    case 'reportes': renderReportes(); initRptDates(); break;
   }
 }
 
@@ -2987,6 +3094,257 @@ function renderReportes(){
   if(recs.length===0) recs.push({type:'teal',msg:'✅ Todo se ve bien. El negocio está en buen camino. Sigue ingresando datos regularmente.'});
   
   document.getElementById('alertasRec').innerHTML=recs.map(r=>`<div class="alert-bar alert-${r.type}" style="margin-bottom:8px">${r.msg}</div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REPORTES PREDEFINIDOS
+// ══════════════════════════════════════════════════════════════
+let _rptType = 'lev';   // 'lev' | 'opp' | 'ven'
+let _rptPer  = 'mon';   // 'day' | 'week' | 'mon'
+
+function setRptType(t, btn) {
+  _rptType = t;
+  document.querySelectorAll('.rpt-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setRptPer(p, btn) {
+  _rptPer = p;
+  document.querySelectorAll('.rpt-per-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Helpers de agrupación ──────────────────────────────────────
+function isoWeek(dateStr) {
+  // Devuelve "YYYY-Wnn" (ISO week)
+  const d = new Date(dateStr + 'T12:00:00');
+  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const wk = Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7);
+  return tmp.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
+}
+function weekLabel(key) {
+  // "2025-W22" → "Sem 22 · 2025"
+  const [y, w] = key.split('-W');
+  return 'Sem ' + w + ' · ' + y;
+}
+function groupKey(dateStr, per) {
+  if (!dateStr) return null;
+  if (per === 'day')  return dateStr.slice(0, 10);
+  if (per === 'week') return isoWeek(dateStr.slice(0, 10));
+  return dateStr.slice(0, 7); // mes
+}
+function keyLabel(key, per) {
+  if (!key) return '–';
+  if (per === 'day')  return new Date(key + 'T12:00:00').toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (per === 'week') return weekLabel(key);
+  return monthLabel(key);
+}
+
+function initRptDates() {
+  // Solo inicializa si están vacíos
+  const desde = document.getElementById('rptDesde');
+  const hasta = document.getElementById('rptHasta');
+  if (desde.value && hasta.value) return;
+  const hoy  = new Date();
+  const ini  = new Date(hoy); ini.setDate(ini.getDate() - 29);
+  hasta.value = hoy.toISOString().slice(0, 10);
+  desde.value = ini.toISOString().slice(0, 10);
+}
+
+function generarReportePredefinido() {
+  const desde = document.getElementById('rptDesde').value;
+  const hasta = document.getElementById('rptHasta').value;
+
+  // Obtener la fuente de datos según tipo
+  let registros = [];
+  let dateField  = 'fecha';
+  let typeLabel  = '';
+  let colLabels  = [];
+  let rowMapper  = null;   // fn(group_key, items) → [col1, col2, ...]
+  let kpiBuilder = null;   // fn(grouped) → [{lbl, val, color}]
+  let chartColor = TC.teal;
+
+  if (_rptType === 'lev') {
+    registros  = DB.levantamientos || [];
+    dateField  = 'fecha';
+    typeLabel  = 'Levantamientos de Datos';
+    chartColor = TC.blue;
+    colLabels  = ['Período', 'Levantamientos', 'Sectores principales', 'Planes más elegidos'];
+    rowMapper  = (key, items) => {
+      const sectores = {};
+      const planes   = {};
+      items.forEach(r => {
+        if (r.sector) sectores[r.sector] = (sectores[r.sector] || 0) + 1;
+        if (r.plan)   planes[r.plan]     = (planes[r.plan]   || 0) + 1;
+      });
+      const topSect  = Object.entries(sectores).sort((a,b)=>b[1]-a[1]).slice(0,2).map(e=>e[0]).join(', ') || '–';
+      const topPlan  = Object.entries(planes).sort((a,b)=>b[1]-a[1]).slice(0,1).map(e=>e[0]).join(', ') || '–';
+      return [keyLabel(key, _rptPer), items.length, topSect, topPlan];
+    };
+    kpiBuilder = (grouped) => {
+      const total = registros.length;
+      const keys  = Object.keys(grouped);
+      const avg   = keys.length ? (total / keys.length).toFixed(1) : 0;
+      const max   = keys.length ? Math.max(...keys.map(k => grouped[k].length)) : 0;
+      const sects = {};
+      registros.forEach(r => { if(r.sector) sects[r.sector]=(sects[r.sector]||0)+1; });
+      const topS  = Object.entries(sects).sort((a,b)=>b[1]-a[1])[0];
+      return [
+        { lbl:'Total en período',   val: total,                         color:'var(--blue)'   },
+        { lbl:'Promedio por período', val: avg,                         color:'var(--teal)'   },
+        { lbl:'Período más activo', val: max + ' lev.',                 color:'var(--purple)' },
+        { lbl:'Sector líder',       val: topS ? topS[0].split('/')[0].trim() : '–', color:'var(--amber)' },
+      ];
+    };
+  } else if (_rptType === 'opp') {
+    registros  = DB.oportunidades;
+    dateField  = 'fecha';
+    typeLabel  = 'Oportunidades de Negocio';
+    chartColor = TC.amber;
+    colLabels  = ['Período', 'Oportunidades', 'Etapas', 'Valor estimado'];
+    rowMapper  = (key, items) => {
+      const etapas = [...new Set(items.map(o=>o.etapa))].join(', ') || '–';
+      const valor  = items.reduce((a,o)=>a+(o.valor||0),0);
+      return [keyLabel(key, _rptPer), items.length, etapas, fmtUSD(valor)];
+    };
+    kpiBuilder = (grouped) => {
+      const total  = registros.length;
+      const keys   = Object.keys(grouped);
+      const avg    = keys.length ? (total / keys.length).toFixed(1) : 0;
+      const ganadas = registros.filter(o=>o.etapa==='Ganado').length;
+      const cerradas= registros.filter(o=>['Ganado','Perdido'].includes(o.etapa)).length;
+      const tasa   = cerradas ? Math.round(ganadas/cerradas*100) : 0;
+      const valTotal= registros.reduce((a,o)=>a+(o.valor||0),0);
+      return [
+        { lbl:'Total en período',    val: total,            color:'var(--amber)'  },
+        { lbl:'Promedio por período', val: avg,             color:'var(--teal)'   },
+        { lbl:'Tasa de cierre',      val: tasa + '%',       color:'var(--green)'  },
+        { lbl:'Valor pipeline total', val: fmtUSD(valTotal),color:'var(--purple)' },
+      ];
+    };
+  } else {
+    registros  = DB.ventas;
+    dateField  = 'fecha';
+    typeLabel  = 'Ventas Cerradas';
+    chartColor = TC.green;
+    colLabels  = ['Período', 'Ventas', 'Monto total', 'Plan más vendido'];
+    rowMapper  = (key, items) => {
+      const monto  = items.reduce((a,v)=>a+v.monto,0);
+      const planes = {};
+      items.forEach(v => { if(v.plan) planes[v.plan]=(planes[v.plan]||0)+1; });
+      const topPlan= Object.entries(planes).sort((a,b)=>b[1]-a[1])[0];
+      return [keyLabel(key, _rptPer), items.length, fmtUSD(monto), topPlan ? topPlan[0] : '–'];
+    };
+    kpiBuilder = (grouped) => {
+      const total  = registros.length;
+      const keys   = Object.keys(grouped);
+      const monto  = registros.reduce((a,v)=>a+v.monto,0);
+      const avg    = keys.length ? (monto / keys.length).toFixed(0) : 0;
+      const cobradas= registros.filter(v=>v.cobro==='Cobrado').reduce((a,v)=>a+v.monto,0);
+      return [
+        { lbl:'Total ventas en período', val: total,           color:'var(--green)'  },
+        { lbl:'Monto total',             val: fmtUSD(monto),   color:'var(--teal)'   },
+        { lbl:'Monto cobrado',           val: fmtUSD(cobradas),color:'var(--purple)' },
+        { lbl:'Promedio por período',    val: fmtUSD(avg),     color:'var(--amber)'  },
+      ];
+    };
+  }
+
+  // ── Filtrar por rango de fechas ──
+  let filtered = registros.filter(r => {
+    const fd = (r[dateField] || '').slice(0, 10);
+    if (!fd) return false;
+    if (desde && fd < desde) return false;
+    if (hasta && fd > hasta) return false;
+    return true;
+  });
+
+  // ── Agrupar ──
+  const grouped = {};
+  filtered.forEach(r => {
+    const key = groupKey((r[dateField] || '').slice(0, 10), _rptPer);
+    if (!key) return;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(r);
+  });
+  const sortedKeys = Object.keys(grouped).sort();
+
+  // ── Mostrar sección ──
+  document.getElementById('rpt-empty').style.display = 'none';
+  document.getElementById('rpt-result').style.display = 'block';
+  document.getElementById('rptExportBtn').style.display = 'inline-flex';
+
+  // Metadata para PDF
+  const perLabel = { day:'Diario', week:'Semanal', mon:'Mensual' }[_rptPer];
+  const rango    = desde || hasta ? ((desde || '…') + ' → ' + (hasta || '…')) : 'Todos los datos';
+  const card     = document.getElementById('rpt-card');
+  card.dataset.pdfTitle = 'Reporte ' + perLabel + ' — ' + typeLabel;
+  card.dataset.pdfSub   = 'DataVisual SV · ' + rango + ' · Generado el ' + new Date().toLocaleDateString('es-SV');
+
+  // ── KPIs ──
+  const kpis = kpiBuilder(grouped);
+  document.getElementById('rpt-kpis').innerHTML = kpis.map(k => `
+    <div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:14px">
+      <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.lbl}</div>
+      <div style="font-size:22px;font-weight:800;font-family:var(--font-head);color:${k.color}">${k.val}</div>
+    </div>`).join('');
+
+  // ── Gráfica ──
+  const chartData = sortedKeys.map(k => grouped[k].length);
+  const chartLabels = sortedKeys.map(k => keyLabel(k, _rptPer));
+  // Monto para ventas (eje secundario)
+  let datasets;
+  if (_rptType === 'ven') {
+    const montoData = sortedKeys.map(k => grouped[k].reduce((a,v)=>a+v.monto,0));
+    datasets = [
+      { label: 'Cantidad de ventas', data: chartData, backgroundColor: chartColor + 'BB', borderColor: chartColor, borderWidth:1.5, borderRadius:5, yAxisID:'y' },
+      { label: 'Monto ($)', data: montoData, type:'line', borderColor: TC.amber, backgroundColor:'transparent', tension:.4, pointRadius:4, pointBackgroundColor:TC.amber, yAxisID:'y1' },
+    ];
+  } else {
+    datasets = [{ label: typeLabel, data: chartData, backgroundColor: chartColor + 'BB', borderColor: chartColor, borderWidth:1.5, borderRadius:5 }];
+  }
+
+  requestAnimationFrame(() => {
+    const scales = _rptType === 'ven'
+      ? { x:{grid:{display:false}}, y:{position:'left',ticks:{stepSize:1},grid:{display:false}}, y1:{position:'right',grid:{display:false},ticks:{callback:v=>'$'+v.toLocaleString()}} }
+      : { x:{grid:{display:false}}, y:{ticks:{stepSize:1},grid:{display:false}} };
+    mkChart('chartRpt', {
+      type: 'bar',
+      data: { labels: chartLabels, datasets },
+      options: { responsive:true, plugins:{ legend:{ position:'bottom', display: _rptType==='ven' } }, scales }
+    });
+  });
+
+  // ── Tabla ──
+  const perCol = { day:'Día', week:'Semana', mon:'Mes' }[_rptPer];
+  const heads  = colLabels.map(l => `<th>${l}</th>`).join('');
+  document.getElementById('tblRptHead').innerHTML = `<tr>${heads}</tr>`;
+
+  if (sortedKeys.length === 0) {
+    document.getElementById('tblRptBody').innerHTML = `<tr><td colspan="${colLabels.length}"><div class="empty"><div class="ei">📭</div><p>Sin datos en el rango seleccionado.</p></div></td></tr>`;
+  } else {
+    const rows = sortedKeys.map(key => {
+      const cols = rowMapper(key, grouped[key]);
+      return '<tr>' + cols.map((c,i) => `<td${i===0?' style="font-weight:600"':''}>${c}</td>`).join('') + '</tr>';
+    });
+    // Fila de totales
+    const total = filtered.length;
+    const totalMonto = _rptType === 'ven' ? fmtUSD(filtered.reduce((a,v)=>a+v.monto,0)) : '';
+    const totalRow = `<tr style="background:var(--surf2);font-weight:700">
+      <td>TOTAL</td><td>${total}</td>
+      ${_rptType==='ven'?`<td>${totalMonto}</td><td>–</td>`:'<td>–</td><td>–</td>'}
+    </tr>`;
+    document.getElementById('tblRptBody').innerHTML = rows.join('') + totalRow;
+  }
+
+  document.getElementById('rpt-footer-note').textContent =
+    'DataVisual SV · Reporte ' + perLabel + ' de ' + typeLabel + ' · ' + rango;
+}
+
+function exportarReportePDF() {
+  window.print();
+}
 }
 
 
