@@ -592,6 +592,66 @@ async function deleteOportunidad(id) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  CONVERTIR OPORTUNIDAD → VENTA
+// ══════════════════════════════════════════════════════════════
+function abrirNuevaVenta() {
+  // Limpia cualquier estado de conversión previo y abre el modal en blanco
+  document.getElementById('ventaEditId').value = '';
+  document.getElementById('ventaFromOppId').value = '';
+  document.getElementById('ventaModalTitle').textContent = '💰 Registrar Venta';
+  document.getElementById('ventaFromOppBanner').style.display = 'none';
+  openModal('modalVenta');
+}
+
+function convertirOppAVenta(id) {
+  const o = DB.oportunidades.find(x => x.id === id);
+  if (!o) return;
+
+  // Mapear plan de oportunidad al value del select de venta
+  const planMap = { 'Starter $99': '99', 'STARTER': '99', 'Growth $199': '199', 'GROWTH': '199', 'Pro $299': '299', 'PRO': '299' };
+  const planValue = planMap[o.plan] || (o.valor >= 299 ? '299' : o.valor >= 199 ? '199' : '99');
+
+  // Limpiar el modal de venta y pre-llenarlo
+  document.getElementById('ventaEditId').value = '';
+  document.getElementById('ventaFromOppId').value = id;
+  document.getElementById('ventaModalTitle').textContent = '💰 Convertir Oportunidad en Venta';
+
+  // Mostrar banner informativo
+  const banner = document.getElementById('ventaFromOppBanner');
+  document.getElementById('ventaFromOppText').textContent = '"' + o.nombre + '"';
+  banner.style.display = 'flex';
+
+  // Pre-llenar campos con datos de la oportunidad
+  document.getElementById('vNombre').value  = o.nombre;
+  document.getElementById('vFecha').value   = new Date().toISOString().slice(0, 10);
+  document.getElementById('vMonto').value   = o.valor || '';
+  document.getElementById('vNotas').value   = o.notas ? 'Convertido desde oportunidad. ' + o.notas : '';
+
+  // Sector
+  const secMap = { 'Restaurante':'Restaurante','Distribuidora':'Distribuidora','Clínica / Salud':'Clínica / Salud','Ferretería':'Ferretería','Colegio / Academia':'Colegio / Academia','Taller / Automotriz':'Taller / Automotriz' };
+  const vSector = document.getElementById('vSector');
+  const sectorTarget = secMap[o.sector] || 'Otro';
+  Array.from(vSector.options).forEach(opt => { opt.selected = opt.value === sectorTarget || opt.text === sectorTarget; });
+
+  // Plan
+  const vPlan = document.getElementById('vPlan');
+  Array.from(vPlan.options).forEach(opt => { opt.selected = opt.value === planValue; });
+  autoPrice();
+
+  // Cobro por defecto: Cobrado (es una venta confirmada)
+  document.getElementById('vCobro').value = 'Cobrado';
+  document.getElementById('vIncSub').value = 'si';
+
+  // Canal heredado de la oportunidad si existe en el select de ventas
+  const vCanal = document.getElementById('vCanal');
+  const canalOrig = o.canal || 'Referido';
+  const canalFit = Array.from(vCanal.options).find(opt => opt.text === canalOrig || opt.value === canalOrig);
+  vCanal.value = canalFit ? canalOrig : 'Referido';
+
+  openModal('modalVenta');
+}
+
+// ══════════════════════════════════════════════════════════════
 //  VENTAS — Supabase CRUD
 // ══════════════════════════════════════════════════════════════
 async function saveVenta() {
@@ -600,6 +660,7 @@ async function saveVenta() {
   const monto = parseFloat(document.getElementById('vMonto').value);
   if (!nombre || !fecha || !monto) { alert('Nombre, fecha y monto son requeridos'); return; }
   const editId = document.getElementById('ventaEditId').value;
+  const fromOppId = document.getElementById('ventaFromOppId').value;
   const plan = document.getElementById('vPlan').value;
   const planName = plan === '99' ? 'Starter' : plan === '199' ? 'Growth' : plan === '299' ? 'Pro' : 'Otro';
   const incSub = document.getElementById('vIncSub').value;
@@ -627,14 +688,24 @@ async function saveVenta() {
         const { data: sd, error: se } = await sb.from('dvsv_suscripciones').insert([subObj]).select();
         if (!se) DB.suscripciones.unshift(sd[0]);
       }
-      // Mark opportunity as won
-      const opp = DB.oportunidades.find(o => o.nombre.toLowerCase() === nombre.toLowerCase() && o.etapa !== 'Ganado');
-      if (opp) {
-        await sb.from('dvsv_oportunidades').update({ etapa: 'Ganado' }).eq('id', opp.id);
-        opp.etapa = 'Ganado';
+      // Marcar oportunidad como Ganado
+      // Prioridad 1: por ID exacto (cuando viene de convertirOppAVenta)
+      // Prioridad 2: por nombre (flujo manual original)
+      const oppTarget = fromOppId
+        ? DB.oportunidades.find(o => o.id === fromOppId)
+        : DB.oportunidades.find(o => o.nombre.toLowerCase() === nombre.toLowerCase() && o.etapa !== 'Ganado');
+      if (oppTarget && oppTarget.etapa !== 'Ganado') {
+        await sb.from('dvsv_oportunidades').update({ etapa: 'Ganado', prob: 100 }).eq('id', oppTarget.id);
+        oppTarget.etapa = 'Ganado';
+        oppTarget.prob  = 100;
       }
     }
-    saveDB(); closeModal('modalVenta'); renderVentas(); renderDashboard();
+    saveDB();
+    closeModal('modalVenta');
+    // Limpiar el fromOppId después de cerrar
+    document.getElementById('ventaFromOppId').value = '';
+    document.getElementById('ventaFromOppBanner').style.display = 'none';
+    renderVentas(); renderDashboard(); renderPipeline();
     document.getElementById('welcomeBanner').style.display = 'none';
   } catch(e) { console.error(e); showSaveError('Error al guardar venta'); }
 }
@@ -1046,7 +1117,7 @@ async function clearAllData() {
 <div class="page" id="page-ventas">
   <div class="sec-hdr">
     <div><h2>Registro de Ventas</h2><p>Proyectos cerrados y pagados</p></div>
-    <button class="btn btn-primary" onclick="openModal('modalVenta')">+ Registrar Venta</button>
+    <button class="btn btn-primary" onclick="abrirNuevaVenta()">+ Registrar Venta</button>
   </div>
 
   <div class="g2" style="margin-bottom:14px">
@@ -2318,6 +2389,11 @@ async function clearAllData() {
     <button class="modal-close" onclick="closeModal('modalVenta')">✕</button>
   </div>
   <input type="hidden" id="ventaEditId">
+  <input type="hidden" id="ventaFromOppId">
+  <!-- Banner informativo cuando viene de una oportunidad -->
+  <div id="ventaFromOppBanner" style="display:none;background:rgba(8,145,178,.08);border:1px solid rgba(8,145,178,.25);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--teal);display:none;align-items:center;gap:8px">
+    🎯 <span id="ventaFromOppText">Convirtiendo oportunidad en venta</span> — la oportunidad pasará a <strong>Ganado</strong> automáticamente.
+  </div>
   <div class="form-grid">
     <div class="field"><label>Cliente <span class="req">*</span></label><input id="vNombre" placeholder="Nombre del negocio"></div>
     <div class="field"><label>Fecha de venta <span class="req">*</span></label><input id="vFecha" type="date"></div>
@@ -2668,6 +2744,7 @@ function renderPipeline(){
         <div class="psector">${o.sector} · ${o.canal||''}</div>
         <div class="pvalue">${fmtUSD(o.valor||0)} · ${o.prob||50}%</div>
         <div class="pdays">${o.fecha||'Sin fecha'}</div>
+        ${stage!=='Ganado'&&stage!=='Perdido'?`<button class="btn btn-sm" style="margin-top:7px;width:100%;background:rgba(5,150,105,.12);color:var(--green);border:1px solid rgba(5,150,105,.25);font-size:10px" onclick="event.stopPropagation();convertirOppAVenta('${o.id}')">💰 Convertir a Venta</button>`:''}
       </div>`).join(''):'<div style="color:var(--txt3);font-size:11px;text-align:center;padding:20px 0">Sin oportunidades</div>'}
     </div>`;
   }).join('');
@@ -2683,6 +2760,7 @@ function renderPipeline(){
     <td style="max-width:180px;font-size:11px;color:var(--txt3)">${(o.notas||'').slice(0,60)}${o.notas?.length>60?'...':''}</td>
     <td><div class="tbl-actions">
       <button class="btn btn-secondary btn-sm" onclick="editOportunidad('${o.id}')">✏️</button>
+      ${!['Ganado','Perdido'].includes(o.etapa) ? `<button class="btn btn-sm" style="background:rgba(5,150,105,.12);color:var(--green);border:1px solid rgba(5,150,105,.3)" onclick="convertirOppAVenta('${o.id}')" title="Convertir esta oportunidad en venta">💰 Venta</button>` : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteOportunidad('${o.id}')">🗑</button>
     </div></td>
   </tr>`).join(''):'<tr><td colspan="9"><div class="empty"><div class="ei">🎯</div><p>No hay oportunidades. Agrega la primera con el botón + Nueva Oportunidad</p></div></td></tr>';
