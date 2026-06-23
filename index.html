@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E1626">
 <title>DataVisual SV — Dashboard Operativo</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -216,17 +220,198 @@ canvas{max-height:220px}
 [data-tip]{position:relative}
 [data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surf3);color:var(--txt);font-size:10px;padding:4px 8px;border-radius:5px;white-space:nowrap;border:1px solid var(--bdr2);z-index:100}
 
-/* ══ RESPONSIVE ══ */
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — Tablet (≤900px) + Mobile (≤600px)
+   Strategy: bottom nav bar on mobile, collapsed sidebar on tablet
+══════════════════════════════════════════════════════════════ */
+
+/* ── TABLET ── */
 @media(max-width:900px){
-  .sidebar{width:60px;min-width:60px}
+  .sidebar{width:64px;min-width:64px}
   .sidebar .logo,.sidebar-bottom .date-badge,.nav-btn span:last-child{display:none}
-  .nav-btn{justify-content:center;padding:10px}
-  .main-content{margin-left:60px}
+  .nav-btn{justify-content:center;padding:12px;border-left:none;border-bottom:2px solid transparent}
+  .nav-btn.active{border-left:none;border-bottom:2px solid var(--teal)}
+  .main-content{margin-left:64px}
   .kpi-strip{grid-template-columns:repeat(3,1fr)}
   .pipeline{grid-template-columns:repeat(2,1fr)}
   .g2,.g3,.g4{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .form-grid.three,.form-grid.four{grid-template-columns:1fr 1fr}
+  .modal{width:95%;padding:18px}
+  .page{padding:16px}
+  #cont-desglose{grid-template-columns:1fr!important}
+}
+
+/* ── MOBILE (≤600px) — bottom nav bar ── */
+@media(max-width:600px){
+  /* Hide sidebar entirely; use bottom nav */
+  .sidebar{ display:none!important }
+  .main-content{ margin-left:0!important; padding-bottom:calc(70px + env(safe-area-inset-bottom)) }
+  .page{ padding:12px 10px }
+
+  /* ── BOTTOM NAV BAR ── */
+  #mobileNav{
+    display:flex!important;
+    position:fixed;bottom:0;left:0;right:0;
+    height:60px;
+    padding-bottom:env(safe-area-inset-bottom);
+    background:rgba(14,22,38,.97);
+    border-top:1px solid rgba(255,255,255,.08);
+    z-index:300;
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    align-items:stretch;
+  }
+  #mobileNav::-webkit-scrollbar{display:none}
+  .mob-nav-btn{
+    flex:0 0 auto;
+    min-width:60px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;padding:6px 10px;
+    background:none;border:none;cursor:pointer;
+    color:rgba(255,255,255,.45);
+    font-size:9px;font-weight:600;font-family:var(--font-body);
+    white-space:nowrap;
+    transition:.15s;
+    border-top:2px solid transparent;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mob-nav-btn .mni{font-size:20px;line-height:1}
+  .mob-nav-btn.active{color:var(--teal);border-top-color:var(--teal)}
+  .mob-nav-btn:active{background:rgba(255,255,255,.05)}
+
+  /* ── HEADER with hamburger replaced by logo ── */
+  .mob-topbar{
+    display:flex!important;
+    position:sticky;top:0;z-index:200;
+    height:52px;
+    background:rgba(14,22,38,.97);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    align-items:center;padding:0 14px;gap:12px;
+    backdrop-filter:blur(12px);
+  }
+  .mob-topbar .mob-logo{
+    font-family:var(--font-head);font-size:16px;font-weight:900;
+    color:#fff;letter-spacing:-.5px;
+  }
+  .mob-topbar .mob-logo span{color:var(--teal)}
+  .mob-topbar .mob-page-title{
+    font-size:13px;font-weight:600;color:rgba(255,255,255,.7);
+    margin-left:auto;
+  }
+  .mob-topbar .user-pill-sm{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--teal);color:#fff;
+    font-size:11px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* ── KPI STRIPS ── */
+  .kpi-strip{ grid-template-columns:1fr 1fr!important; gap:8px }
+  .kpi-card{ padding:12px }
+  .kpi-val{ font-size:20px }
+  .kpi-lbl{ font-size:9px }
+
+  /* ── GRIDS → single col ── */
+  .g2,.g3,.g4{ grid-template-columns:1fr; gap:10px }
+  .form-grid,.form-grid.three,.form-grid.four{ grid-template-columns:1fr; gap:10px }
+
+  /* ── PIPELINE → horizontal scroll cards ── */
+  .pipeline{
+    display:flex!important; overflow-x:auto; gap:10px;
+    padding-bottom:8px; scrollbar-width:none;
+    -webkit-overflow-scrolling:touch; scroll-snap-type:x mandatory;
+  }
+  .pipeline::-webkit-scrollbar{display:none}
+  .pipe-col{
+    flex:0 0 240px; scroll-snap-align:start;
+    min-height:160px; padding:10px;
+  }
+  .pipe-card{ touch-action:manipulation }
+
+  /* ── TABLES → card view ── */
+  .tbl-wrap{ border-radius:var(--r); overflow:hidden }
+  .tbl thead{ display:none }
+  .tbl tr{
+    display:block; margin-bottom:10px;
+    background:var(--surf1); border:1px solid var(--bdr);
+    border-radius:var(--r); padding:10px 12px;
+  }
+  .tbl td{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:5px 0; border-bottom:1px solid rgba(208,217,236,.4);
+    font-size:12px;
+  }
+  .tbl td:last-child{ border-bottom:none; padding-top:8px; justify-content:flex-end }
+  .tbl td:first-child{ font-weight:700; font-size:13px; color:var(--txt); padding-bottom:6px }
+  .tbl td[data-label]::before{
+    content:attr(data-label);
+    font-size:10px;font-weight:600;color:var(--txt3);
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  /* Hide less important cols on mobile */
+  .tbl td.mob-hide{ display:none }
+
+  /* ── CARDS ── */
+  .card{ padding:14px }
+  .card-hdr{ flex-wrap:wrap; gap:8px }
+  .card-hdr h3{ font-size:13px }
+  .sec-hdr{ flex-wrap:wrap; gap:10px }
+  .sec-hdr h2{ font-size:18px }
+
+  /* ── MODALS → full-screen bottom sheet ── */
+  .modal-overlay{ align-items:flex-end!important; padding:0!important }
+  .modal{
+    width:100%!important; max-width:100%!important;
+    border-radius:20px 20px 0 0!important;
+    max-height:92vh!important;
+    padding:20px 16px 32px!important;
+    margin:0!important;
+  }
+  .modal::before{
+    content:'';display:block;width:36px;height:4px;
+    background:var(--bdr2);border-radius:2px;
+    margin:0 auto 16px;
+  }
+  .form-actions{ flex-direction:column; gap:8px }
+  .form-actions button{ width:100%!important; padding:13px!important; font-size:14px!important }
+
+  /* ── CHARTS ── */
+  canvas{ max-height:180px }
+  .chart-wrap{ overflow:hidden }
+
+  /* ── CONTABILIDAD desglose ── */
+  #cont-desglose{ grid-template-columns:1fr!important }
+
+  /* ── SEMÁFORO ── */
+  #cont-semaforo{ flex-wrap:wrap; gap:10px; padding:14px }
+
+  /* ── LEVANTAMIENTO ── */
+  #page-levantamiento .fh-meta{ grid-template-columns:1fr 1fr!important }
+  #page-levantamiento .lev-page{ padding:12px }
+  .field-grid{ grid-template-columns:1fr!important }
+  .field-grid.two,.field-grid.three{ grid-template-columns:1fr!important }
+
+  /* ── REPORT predefined ── */
+  #rpt-card .card-hdr > div:last-child{
+    flex-direction:column; align-items:stretch; width:100%;
+  }
+  #rpt-kpis{ grid-template-columns:1fr 1fr!important }
+
+  /* ── BUTTONS ── */
+  .btn{ touch-action:manipulation; -webkit-tap-highlight-color:transparent }
+  .btn-sm{ min-height:36px; min-width:36px }
+  .tbl-actions{ gap:4px }
+
+  /* ── PIPELINE STATS ── */
+  #pipelineStats{ grid-template-columns:1fr!important }
+
+  /* ── WELCOME BANNER ── */
+  #welcomeBanner .g2{ gap:8px }
+
+  /* ── TOPBAR VISIBLE ── */
+  #mobileTopbar{ display:flex!important }
 }
 
 /* ══ LEVANTAMIENTO SCOPED STYLES ══ */
@@ -400,6 +585,7 @@ canvas{max-height:220px}
 @media print {
   /* Ocultar todo el shell */
   .sidebar,.login-box,#loginScreen,.nav,
+  #mobileNav,#mobileTopbar,
   .sec-hdr,.g2,.g3,.g4,.kpi-strip,
   #rpt-card .card-hdr button,
   #rpt-card > .card-hdr > div:last-child,
@@ -480,7 +666,7 @@ function showLoginError(msg) {
 
 async function doLogout() {
   await sb.auth.signOut();
-  DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], costos_fijos:[], meta_anual:29287, presupuesto_mensual:1000 };
+  DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], costos_fijos:[], clientes:[], meta_anual:29287, presupuesto_mensual:1000 };
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('logoutBtn').style.display = 'none';
@@ -498,6 +684,9 @@ async function onSessionReady(session) {
   document.getElementById('userAvatar').textContent = initials;
   document.getElementById('userEmail').textContent = email;
   document.getElementById('userPill').style.display = 'flex';
+  // Sync mobile avatar
+  const mobAv = document.getElementById('mobUserAvatar');
+  if (mobAv) mobAv.textContent = initials;
   document.getElementById('logoutBtn').style.display = 'flex';
   // Enter key on login
   document.getElementById('loginPassword').removeEventListener('keydown', loginEnterKey);
@@ -519,7 +708,7 @@ async function checkSession() {
 // ══════════════════════════════════════════════════════════════
 //  DB LAYER — Supabase persistent storage
 // ══════════════════════════════════════════════════════════════
-let DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], costos_fijos:[], meta_anual:29287, presupuesto_mensual:1000 };
+let DB = { oportunidades:[], ventas:[], suscripciones:[], gastos:[], levantamientos:[], costos_fijos:[], clientes:[], meta_anual:29287, presupuesto_mensual:1000 };
 let _dbLoading = false;
 
 function showLoading(msg) {
@@ -550,24 +739,26 @@ function showSaveError(msg) {
 async function loadDB() {
   showLoading('⟳ Cargando datos...');
   try {
-    const [opps, ventas, subs, gastos, levs, costos] = await Promise.all([
+    const [opps, ventas, subs, gastos, levs, costos, clientes] = await Promise.all([
       sb.from('dvsv_oportunidades').select('*').order('created_at', { ascending: false }),
       sb.from('dvsv_ventas').select('*').order('fecha', { ascending: false }),
       sb.from('dvsv_suscripciones').select('*').order('created_at', { ascending: false }),
       sb.from('dvsv_gastos').select('*').order('fecha', { ascending: false }),
       sb.from('dvsv_levantamientos').select('*').order('created_at', { ascending: false }),
       sb.from('dvsv_costos_fijos').select('*').order('created_at', { ascending: false }),
+      sb.from('dvsv_clientes').select('*').order('created_at', { ascending: false }),
     ]);
     if (opps.error) throw opps.error;
     if (ventas.error) throw ventas.error;
     if (subs.error) throw subs.error;
     if (gastos.error) throw gastos.error;
     DB.oportunidades = opps.data || [];
-    DB.ventas = ventas.data || [];
+    DB.ventas        = ventas.data || [];
     DB.suscripciones = subs.data || [];
-    DB.gastos = gastos.data || [];
-    DB.levantamientos = (levs && !levs.error) ? levs.data : [];
-    DB.costos_fijos   = (costos && !costos.error) ? costos.data : [];
+    DB.gastos        = gastos.data || [];
+    DB.levantamientos = (levs    && !levs.error)    ? levs.data    : [];
+    DB.costos_fijos   = (costos  && !costos.error)  ? costos.data  : [];
+    DB.clientes       = (clientes && !clientes.error)? clientes.data : [];
     hideLoading();
   } catch(e) {
     console.error('Supabase loadDB error:', e);
@@ -924,8 +1115,9 @@ async function clearAllData() {
       sb.from('dvsv_gastos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       sb.from('dvsv_levantamientos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       sb.from('dvsv_costos_fijos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      sb.from('dvsv_clientes').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ]);
-    DB = { oportunidades: [], ventas: [], suscripciones: [], gastos: [], levantamientos: [], costos_fijos: [], meta_anual: 29287, presupuesto_mensual: 1000 };
+    DB = { oportunidades: [], ventas: [], suscripciones: [], gastos: [], levantamientos: [], costos_fijos: [], clientes: [], meta_anual: 29287, presupuesto_mensual: 1000 };
     saveDB(); buildMonthSelector(); renderDashboard();
     alert('✅ Todos los datos borrados de Supabase.');
   } catch(e) { console.error(e); showSaveError('Error al borrar datos'); }
@@ -1014,7 +1206,7 @@ async function clearAllData() {
     <div class="login-sub">Dashboard Operativo · Acceso restringido</div>
     <div class="login-field">
       <label>Correo electrónico</label>
-      <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email">
+      <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email" inputmode="email" autocapitalize="none">
     </div>
     <div class="login-field">
       <label>Contraseña</label>
@@ -1027,12 +1219,56 @@ async function clearAllData() {
 
 <!-- ════════════ SIDEBAR ════════════ -->
 <div class="app-shell">
+
+<!-- ════════ MOBILE TOPBAR (hidden on desktop) ════════ -->
+<div id="mobileTopbar" style="display:none">
+  <div class="mob-topbar">
+    <div class="mob-logo">DataVisual <span>SV</span></div>
+    <div class="mob-page-title" id="mobPageTitle">Dashboard</div>
+    <div class="user-pill-sm" id="mobUserAvatar">?</div>
+  </div>
+</div>
+
+<!-- ════════ MOBILE BOTTOM NAV (hidden on desktop) ════════ -->
+<nav id="mobileNav" style="display:none">
+  <button class="mob-nav-btn active" onclick="mobShowPage('dashboard',this,'Dashboard')">
+    <span class="mni">📊</span>Inicio
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('clientes',this,'Clientes')">
+    <span class="mni">👥</span>Clientes
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('pipeline',this,'Pipeline CRM')">
+    <span class="mni">🎯</span>Pipeline
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('ventas',this,'Ventas')">
+    <span class="mni">💰</span>Ventas
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('suscripciones',this,'Suscripciones')">
+    <span class="mni">🔄</span>Subs
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('gastos',this,'Gastos')">
+    <span class="mni">🧾</span>Gastos
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('costos',this,'Costos Fijos')">
+    <span class="mni">🏛</span>Costos
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('contabilidad',this,'Contabilidad')">
+    <span class="mni">⚖️</span>Balance
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('reportes',this,'Reportes')">
+    <span class="mni">📈</span>Reportes
+  </button>
+  <button class="mob-nav-btn" onclick="mobShowPage('levantamiento',this,'Levantamiento')">
+    <span class="mni">📋</span>Lev.
+  </button>
+</nav>
 <aside class="sidebar">
   <div class="sidebar-logo">
     <span class="logo">DataVisual <em>SV</em><sub>OPS</sub></span>
   </div>
   <nav class="nav">
     <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="nb-icon">📊</span>Dashboard</button>
+    <button class="nav-btn" onclick="showPage('clientes',this)"><span class="nb-icon">👥</span>Clientes</button>
     <button class="nav-btn" onclick="showPage('pipeline',this)"><span class="nb-icon">🎯</span>Pipeline CRM</button>
     <button class="nav-btn" onclick="showPage('ventas',this)"><span class="nb-icon">💰</span>Ventas</button>
     <button class="nav-btn" onclick="showPage('suscripciones',this)"><span class="nb-icon">🔄</span>Suscripciones</button>
@@ -1137,6 +1373,91 @@ async function clearAllData() {
 <!-- ════════════════════════════════════════════
      PAGE 2 — PIPELINE CRM
 ═══════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════
+     PAGE — CLIENTES
+═══════════════════════════════════════════════ -->
+<div class="page" id="page-clientes">
+  <div class="sec-hdr">
+    <div><h2>Maestro de Clientes</h2><p>Registro, historial y seguimiento de clientes activos</p></div>
+    <div style="display:flex;gap:8px">
+      <input id="searchCliente" placeholder="🔍 Buscar cliente…" oninput="renderClientes()"
+        style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:7px 12px;font-size:12px;color:var(--txt);font-family:var(--font-body);width:200px">
+      <button class="btn btn-primary" onclick="openModal('modalCliente')">+ Nuevo Cliente</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+    <div class="kpi-card c-teal">
+      <div class="kpi-lbl">Total Clientes</div>
+      <div class="kpi-val" id="k-cli-total">0</div>
+      <div class="kpi-sub" id="k-cli-sub">registrados</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-lbl">Clientes Activos</div>
+      <div class="kpi-val" id="k-cli-activos">0</div>
+      <div class="kpi-sub">con proyectos o suscripción</div>
+    </div>
+    <div class="kpi-card c-amber">
+      <div class="kpi-lbl">Sectores</div>
+      <div class="kpi-val" id="k-cli-sectores">0</div>
+      <div class="kpi-sub">sectores distintos</div>
+    </div>
+    <div class="kpi-card c-purple">
+      <div class="kpi-lbl">Revenue Total</div>
+      <div class="kpi-val" id="k-cli-revenue">$0</div>
+      <div class="kpi-sub">facturado histórico</div>
+    </div>
+  </div>
+
+  <!-- Gráficas -->
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><h3>🏭 Clientes por Sector</h3><span class="cht">distribución</span></div>
+      <div class="chart-wrap"><canvas id="chartCliSectores" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>📈 Clientes Nuevos por Mes</h3><span class="cht">últimos 6 meses</span></div>
+      <div class="chart-wrap"><canvas id="chartCliMes"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Filtros + Tabla -->
+  <div class="card">
+    <div class="card-hdr" style="flex-wrap:wrap;gap:8px">
+      <h3>📋 Directorio de Clientes</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="filterCliSector" onchange="renderClientes()"
+          style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+          <option value="">Todos los sectores</option>
+          <option>Restaurante</option><option>Distribuidora</option><option>Clínica / Salud</option>
+          <option>Ferretería</option><option>Colegio / Academia</option><option>Taller / Automotriz</option>
+          <option>Tecnología</option><option>Retail</option><option>Servicios</option><option>Otro</option>
+        </select>
+        <select id="filterCliEstado" onchange="renderClientes()"
+          style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:5px 10px;font-size:12px;color:var(--txt)">
+          <option value="">Todos</option>
+          <option value="Activo">Activos</option>
+          <option value="Inactivo">Inactivos</option>
+          <option value="Prospecto">Prospectos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Cliente</th><th>Sector</th><th>Contacto</th><th>Teléfono</th>
+            <th>Plan</th><th>Estado</th><th>Revenue</th><th>Desde</th><th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyClientes"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-pipeline">
   <div class="sec-hdr">
     <div><h2>Pipeline CRM</h2><p>Gestión de oportunidades de negocio</p></div>
@@ -1197,7 +1518,7 @@ async function clearAllData() {
       </select>
     </div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Fecha</th><th>Cliente</th><th>Sector</th><th>Plan</th><th>Monto</th><th>Estado cobro</th><th>Canal</th><th>Notas</th><th>Acción</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Cliente</th><th>Sector</th><th>Plan</th><th>Monto</th><th>Estado cobro</th><th>Canal</th><th class="mob-hide">Notas</th><th>Acción</th></tr></thead>
       <tbody id="tbodyVentas"></tbody>
     </table></div>
   </div>
@@ -2623,6 +2944,92 @@ async function clearAllData() {
 </div>
 </div>
 
+<!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="modalCliente">
+<div class="modal">
+  <div class="modal-hdr">
+    <h3 id="cliModalTitle">👥 Nuevo Cliente</h3>
+    <button class="modal-close" onclick="closeModal('modalCliente')">✕</button>
+  </div>
+  <input type="hidden" id="cliEditId">
+
+  <!-- Sección: Datos del negocio -->
+  <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏢 Datos del Negocio</div>
+  <div class="form-grid">
+    <div class="field"><label>Nombre del negocio <span class="req">*</span></label><input id="cliNombre" placeholder="Nombre comercial o legal"></div>
+    <div class="field"><label>Sector / Giro <span class="req">*</span></label>
+      <select id="cliSector">
+        <option>Restaurante</option><option>Distribuidora</option><option>Clínica / Salud</option>
+        <option>Ferretería</option><option>Colegio / Academia</option><option>Taller / Automotriz</option>
+        <option>Tecnología</option><option>Retail</option><option>Servicios</option><option>Otro</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-grid three" style="margin-top:10px">
+    <div class="field"><label>Ciudad / Municipio</label><input id="cliCiudad" placeholder="San Salvador"></div>
+    <div class="field"><label>País</label>
+      <select id="cliPais">
+        <option>El Salvador</option><option>Guatemala</option><option>Honduras</option>
+        <option>Nicaragua</option><option>Costa Rica</option><option>Panamá</option>
+        <option>México</option><option>Colombia</option><option>Otro</option>
+      </select>
+    </div>
+    <div class="field"><label>NIT / RUC</label><input id="cliNit" placeholder="0000-000000-000-0"></div>
+  </div>
+
+  <!-- Sección: Contacto -->
+  <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px">👤 Persona de Contacto</div>
+  <div class="form-grid">
+    <div class="field"><label>Nombre del contacto <span class="req">*</span></label><input id="cliContacto" placeholder="Nombre y apellido"></div>
+    <div class="field"><label>Cargo / Rol</label><input id="cliCargo" placeholder="Gerente, Dueño, Administrador…"></div>
+  </div>
+  <div class="form-grid three" style="margin-top:10px">
+    <div class="field"><label>Teléfono / WhatsApp</label><input id="cliTel" type="tel" placeholder="+503 7000-0000" inputmode="tel"></div>
+    <div class="field"><label>Correo electrónico</label><input id="cliEmail" type="email" placeholder="contacto@empresa.com" inputmode="email" autocapitalize="none"></div>
+    <div class="field"><label>Canal preferido</label>
+      <select id="cliCanal">
+        <option>WhatsApp</option><option>Email</option><option>Llamada</option>
+        <option>Presencial</option><option>Instagram</option><option>Facebook</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Sección: Relación comercial -->
+  <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px">💼 Relación Comercial</div>
+  <div class="form-grid three" style="margin-top:0">
+    <div class="field"><label>Plan contratado</label>
+      <select id="cliPlan">
+        <option value="">Sin plan aún</option>
+        <option value="Starter">Starter — $99</option>
+        <option value="Growth">Growth — $199</option>
+        <option value="Pro">Pro — $299</option>
+        <option value="Enterprise">Enterprise</option>
+      </select>
+    </div>
+    <div class="field"><label>Estado del cliente</label>
+      <select id="cliEstado">
+        <option value="Activo">Activo</option>
+        <option value="Prospecto">Prospecto</option>
+        <option value="Inactivo">Inactivo</option>
+        <option value="Churned">Churned (se fue)</option>
+      </select>
+    </div>
+    <div class="field"><label>Fecha inicio relación</label><input id="cliFecha" type="date"></div>
+  </div>
+  <div class="field" style="margin-top:10px"><label>Sitio web / Redes sociales</label>
+    <input id="cliWeb" placeholder="www.empresa.com · @empresa_ig" inputmode="url">
+  </div>
+  <div class="field" style="margin-top:10px"><label>Notas / Observaciones</label>
+    <textarea id="cliNotas" rows="2" placeholder="Información adicional relevante sobre el cliente…"></textarea>
+  </div>
+
+  <div class="form-actions" style="margin-top:20px">
+    <button class="btn btn-primary" onclick="saveCliente()">💾 Guardar Cliente</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalCliente')">Cancelar</button>
+  </div>
+</div>
+</div>
+
 <!-- MODAL VENTA -->
 <div class="modal-overlay" id="modalVenta">
 <div class="modal">
@@ -2835,8 +3242,12 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn)btn.classList.add('active');
+  // Scroll to top on page change (mobile)
+  document.querySelector('.main-content')?.scrollTo(0,0);
+  window.scrollTo(0,0);
   switch(id){
     case 'dashboard': renderDashboard(); break;
+    case 'clientes': renderClientes(); break;
     case 'pipeline': renderPipeline(); break;
     case 'ventas': renderVentas(); break;
     case 'suscripciones': renderSuscripciones(); break;
@@ -2845,6 +3256,25 @@ function showPage(id,btn){
     case 'contabilidad': renderContabilidad(); break;
     case 'reportes': renderReportes(); initRptDates(); break;
   }
+}
+
+// Mobile nav wrapper — syncs bottom nav active state + page title
+const PAGE_LABELS = {
+  dashboard:'Dashboard', clientes:'Clientes', pipeline:'Pipeline CRM', ventas:'Ventas',
+  suscripciones:'Suscripciones', gastos:'Gastos', costos:'Costos Fijos',
+  contabilidad:'Contabilidad', reportes:'Reportes', levantamiento:'Levantamiento'
+};
+function mobShowPage(id, btn, label) {
+  // Sync sidebar nav (keeps state consistent)
+  const sideBtn = [...document.querySelectorAll('.nav-btn')]
+    .find(b => b.getAttribute('onclick')?.includes("'"+id+"'"));
+  showPage(id, sideBtn || null);
+  // Update bottom nav active
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Update mobile topbar title
+  const titleEl = document.getElementById('mobPageTitle');
+  if(titleEl) titleEl.textContent = label || PAGE_LABELS[id] || id;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4066,6 +4496,204 @@ function renderContabilidad() {
       options:{ responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ grid:{display:false} }, y:{ ticks:{ callback:v=>'$'+v.toLocaleString() } } } }
     });
   });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CLIENTES — Supabase CRUD
+// ══════════════════════════════════════════════════════════════
+async function saveCliente() {
+  const nombre   = document.getElementById('cliNombre').value.trim();
+  const contacto = document.getElementById('cliContacto').value.trim();
+  if (!nombre)   { alert('El nombre del negocio es requerido.'); return; }
+  if (!contacto) { alert('El nombre del contacto es requerido.'); return; }
+  const editId = document.getElementById('cliEditId').value;
+  const obj = {
+    nombre,
+    sector:   document.getElementById('cliSector').value,
+    ciudad:   document.getElementById('cliCiudad').value.trim(),
+    pais:     document.getElementById('cliPais').value,
+    nit:      document.getElementById('cliNit').value.trim(),
+    contacto,
+    cargo:    document.getElementById('cliCargo').value.trim(),
+    telefono: document.getElementById('cliTel').value.trim(),
+    email:    document.getElementById('cliEmail').value.trim(),
+    canal:    document.getElementById('cliCanal').value,
+    plan:     document.getElementById('cliPlan').value,
+    estado:   document.getElementById('cliEstado').value,
+    fecha:    document.getElementById('cliFecha').value || new Date().toISOString().slice(0,10),
+    web:      document.getElementById('cliWeb').value.trim(),
+    notas:    document.getElementById('cliNotas').value.trim(),
+  };
+  showLoading('Guardando cliente...');
+  try {
+    if (editId) {
+      const { error } = await sb.from('dvsv_clientes').update(obj).eq('id', editId);
+      if (error) throw error;
+      const i = DB.clientes.findIndex(x => x.id === editId);
+      if (i > -1) DB.clientes[i] = { ...DB.clientes[i], ...obj };
+    } else {
+      const { data, error } = await sb.from('dvsv_clientes').insert([obj]).select();
+      if (error) throw error;
+      DB.clientes.unshift(data[0]);
+    }
+    saveDB(); closeModal('modalCliente'); renderClientes(); renderDashboard();
+  } catch(e) { console.error(e); showSaveError('Error al guardar cliente: ' + (e.message || e.code)); }
+}
+
+async function editCliente(id) {
+  const c = DB.clientes.find(x => x.id === id); if (!c) return;
+  document.getElementById('cliEditId').value      = id;
+  document.getElementById('cliModalTitle').textContent = '✏️ Editar Cliente';
+  document.getElementById('cliNombre').value      = c.nombre  || '';
+  document.getElementById('cliSector').value      = c.sector  || 'Otro';
+  document.getElementById('cliCiudad').value      = c.ciudad  || '';
+  document.getElementById('cliPais').value        = c.pais    || 'El Salvador';
+  document.getElementById('cliNit').value         = c.nit     || '';
+  document.getElementById('cliContacto').value    = c.contacto|| '';
+  document.getElementById('cliCargo').value       = c.cargo   || '';
+  document.getElementById('cliTel').value         = c.telefono|| '';
+  document.getElementById('cliEmail').value       = c.email   || '';
+  document.getElementById('cliCanal').value       = c.canal   || 'WhatsApp';
+  document.getElementById('cliPlan').value        = c.plan    || '';
+  document.getElementById('cliEstado').value      = c.estado  || 'Activo';
+  document.getElementById('cliFecha').value       = c.fecha   || '';
+  document.getElementById('cliWeb').value         = c.web     || '';
+  document.getElementById('cliNotas').value       = c.notas   || '';
+  openModal('modalCliente');
+}
+
+async function deleteCliente(id) {
+  const c = DB.clientes.find(x => x.id === id);
+  if (!confirm(`¿Eliminar el cliente "${c?.nombre}"? Esta acción no se puede deshacer.`)) return;
+  showLoading('Eliminando...');
+  try {
+    const { error } = await sb.from('dvsv_clientes').delete().eq('id', id);
+    if (error) throw error;
+    DB.clientes = DB.clientes.filter(x => x.id !== id);
+    saveDB(); renderClientes();
+  } catch(e) { console.error(e); showSaveError('Error al eliminar'); }
+}
+
+// ── Render Clientes ──────────────────────────────────────────
+function renderClientes() {
+  const search      = (document.getElementById('searchCliente')?.value || '').toLowerCase();
+  const filterSec   = document.getElementById('filterCliSector')?.value  || '';
+  const filterEst   = document.getElementById('filterCliEstado')?.value  || '';
+
+  // ── KPIs ──
+  const activos = DB.clientes.filter(c => c.estado === 'Activo').length;
+  const sectores = [...new Set(DB.clientes.map(c => c.sector).filter(Boolean))].length;
+  // Revenue: sumar ventas cuyo nombre de cliente coincide
+  const revenueTotal = DB.clientes.reduce((sum, c) => {
+    const venCli = DB.ventas.filter(v =>
+      v.nombre?.toLowerCase().trim() === c.nombre?.toLowerCase().trim()
+    );
+    return sum + venCli.reduce((a, v) => a + (v.monto || 0), 0);
+  }, 0);
+
+  document.getElementById('k-cli-total').textContent    = DB.clientes.length;
+  document.getElementById('k-cli-sub').textContent      = DB.clientes.length + ' registrados';
+  document.getElementById('k-cli-activos').textContent  = activos;
+  document.getElementById('k-cli-sectores').textContent = sectores;
+  document.getElementById('k-cli-revenue').textContent  = fmtUSD(revenueTotal);
+
+  // ── Gráfica: por sector ──
+  const secMap = {};
+  DB.clientes.forEach(c => { if (c.sector) secMap[c.sector] = (secMap[c.sector] || 0) + 1; });
+  const PALETTE = [TC.teal, TC.amber, TC.green, TC.blue, TC.purple, TC.red,
+                   '#F43F5E','#8B5CF6','#06B6D4','#84CC16'];
+  requestAnimationFrame(() => {
+    mkChart('chartCliSectores', {
+      type: 'doughnut',
+      data: { labels: Object.keys(secMap), datasets: [{ data: Object.values(secMap), backgroundColor: PALETTE, borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } }, cutout: '60%' }
+    });
+
+    // Gráfica: nuevos por mes (últimos 6)
+    const months6 = last6Months();
+    const newPerMonth = months6.map(m =>
+      DB.clientes.filter(c => c.fecha && c.fecha.slice(0,7) === m).length
+    );
+    mkChart('chartCliMes', {
+      type: 'bar',
+      data: { labels: months6.map(monthLabel), datasets: [{ label: 'Nuevos clientes', data: newPerMonth, backgroundColor: TC.teal + 'BB', borderColor: TC.teal, borderRadius: 6, borderSkipped: false }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { stepSize: 1 }, grid: { display: false } } } }
+    });
+  });
+
+  // ── Tabla ──
+  let rows = DB.clientes;
+  if (search)    rows = rows.filter(c =>
+    c.nombre?.toLowerCase().includes(search) ||
+    c.contacto?.toLowerCase().includes(search) ||
+    c.email?.toLowerCase().includes(search) ||
+    c.telefono?.includes(search)
+  );
+  if (filterSec) rows = rows.filter(c => c.sector === filterSec);
+  if (filterEst) rows = rows.filter(c => c.estado === filterEst);
+
+  const estadoColor = { Activo:'b-ganado', Prospecto:'b-demo', Inactivo:'b-perdido', Churned:'b-perdido' };
+
+  // Revenue por cliente
+  const revenueCliente = id => {
+    const c = DB.clientes.find(x => x.id === id);
+    if (!c) return 0;
+    return DB.ventas
+      .filter(v => v.nombre?.toLowerCase().trim() === c.nombre?.toLowerCase().trim())
+      .reduce((a, v) => a + (v.monto || 0), 0);
+  };
+
+  document.getElementById('tbodyClientes').innerHTML = rows.length
+    ? rows.map(c => {
+        const rev = revenueCliente(c.id);
+        return `<tr>
+          <td>
+            <div style="font-weight:700;color:var(--txt)">${c.nombre}</div>
+            <div style="font-size:10px;color:var(--txt3)">${c.ciudad || ''}${c.ciudad && c.pais ? ' · ' : ''}${c.pais || ''}</div>
+          </td>
+          <td><span style="font-size:10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:2px 8px;font-weight:600">${c.sector || '–'}</span></td>
+          <td>
+            <div style="font-size:12px;font-weight:600">${c.contacto || '–'}</div>
+            <div style="font-size:10px;color:var(--txt3)">${c.cargo || ''}</div>
+          </td>
+          <td>
+            ${c.telefono ? `<a href="tel:${c.telefono}" style="color:var(--teal);text-decoration:none;font-size:12px">${c.telefono}</a>` : '–'}
+            ${c.email    ? `<div><a href="mailto:${c.email}" style="color:var(--txt3);text-decoration:none;font-size:10px">${c.email}</a></div>` : ''}
+          </td>
+          <td style="font-size:11px">${c.plan || '–'}</td>
+          <td><span class="badge ${estadoColor[c.estado] || 'b-prospecto'}">${c.estado || 'Activo'}</span></td>
+          <td class="mono" style="color:${rev > 0 ? 'var(--green)' : 'var(--txt3)'}; font-weight:${rev > 0 ? '700' : '400'}">${rev > 0 ? fmtUSD(rev) : '–'}</td>
+          <td style="font-size:11px;color:var(--txt3)">${c.fecha ? new Date(c.fecha+'T12:00:00').toLocaleDateString('es-SV',{day:'2-digit',month:'short',year:'numeric'}) : '–'}</td>
+          <td><div class="tbl-actions">
+            <button class="btn btn-secondary btn-sm" onclick="editCliente('${c.id}')" title="Editar">✏️</button>
+            <button class="btn btn-sm" style="background:rgba(8,145,178,.1);color:var(--teal);border:1px solid rgba(8,145,178,.2)" onclick="verClienteDetalle('${c.id}')" title="Ver historial">📋</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCliente('${c.id}')" title="Eliminar">🗑</button>
+          </div></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="9"><div class="empty"><div class="ei">👥</div><p>No hay clientes registrados. Agrega el primero con el botón + Nuevo Cliente</p></div></td></tr>';
+}
+
+// Ver historial rápido del cliente (alert informativo por ahora)
+function verClienteDetalle(id) {
+  const c = DB.clientes.find(x => x.id === id); if (!c) return;
+  const ventas = DB.ventas.filter(v => v.nombre?.toLowerCase().trim() === c.nombre?.toLowerCase().trim());
+  const subs   = DB.suscripciones.filter(s => s.nombre?.toLowerCase().trim() === c.nombre?.toLowerCase().trim());
+  const opps   = DB.oportunidades.filter(o => o.nombre?.toLowerCase().trim() === c.nombre?.toLowerCase().trim());
+  const rev    = ventas.reduce((a,v) => a + (v.monto||0), 0);
+  const lines  = [
+    `👥 ${c.nombre}`,
+    `📞 ${c.telefono || '–'} · ${c.email || '–'}`,
+    `🏭 ${c.sector} · ${c.ciudad || ''} ${c.pais || ''}`,
+    ``,
+    `💰 Ventas: ${ventas.length} (${fmtUSD(rev)} total)`,
+    `🔄 Suscripciones: ${subs.length}`,
+    `🎯 Oportunidades: ${opps.length}`,
+    ``,
+    `Plan: ${c.plan || 'Sin plan'} · Estado: ${c.estado}`,
+    c.notas ? `📝 ${c.notas}` : '',
+  ].filter(Boolean);
+  alert(lines.join('\n'));
 }
 
 // ══ LEVANTAMIENTO ══
